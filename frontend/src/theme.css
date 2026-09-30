@@ -1,0 +1,262 @@
+:root {
+  --bg:         #f0ede6;
+  --bg-card:    #f8f6f1;
+  --bg-card2:   #e8e5de;
+  --ink:        #28251f;
+  --ink-muted:  #837e75;
+  --red:        #c8001a;
+  --red-dim:    #960014;
+  --border:     #28251f;
+  --border-dim: #c2bfb8;
+  --success:    #1e6b32;
+  --error:      #c8001a;
+
+  /* Compatibility aliases */
+  --purple-dark:  var(--red);
+  --purple-mid:   var(--red-dim);
+  --purple-light: var(--ink-muted);
+  --purple-pale:  var(--bg-card2);
+  --purple-deep:  var(--bg);
+  --white:        var(--ink);
+  --text-muted:   var(--ink-muted);
+
+  --radius: 0px;
+  --shadow: 2px 2px 0 #0d0d0d;
+  --font-display: 'Syne', sans-serif;
+  --font-body:    'Syne', sans-serif;
+  --font-mono:    'Syne Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { margin: 0; }
+#root { min-height: 100vh; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Buttons ─────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 0;
+  border: 2px solid var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  background: var(--bg-card);
+  color: var(--ink);
+}
+.btn:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--bg-card);
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--bg-card);
+  border-color: var(--ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--border-dim);
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--bg-card2);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1px solid var(--border-dim);
+}
+.btn-ghost:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.btn-danger {
+  background: transparent;
+  color: var(--red);
+  border: 2px solid var(--red);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--red);
+  color: #fff;
+}
+.btn-success {
+  background: transparent;
+  color: var(--success);
+  border: 2px solid var(--success);
+}
+.btn-success:hover:not(:disabled) {
+  background: var(--success);
+  color: #fff;
+}
+.btn-sm { padding: 5px 12px; font-size: 0.72rem; }
+.btn-lg { padding: 13px 34px; font-size: 0.9rem; }
+
+/* ── Cards ───────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  padding: 22px;
+}
+
+/* ── Inputs ──────────────────────────────────── */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  background: var(--bg-card);
+  border: 2px solid var(--border-dim);
+  border-radius: 0;
+  color: var(--ink);
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.12s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--ink);
+}
+input::placeholder { color: var(--ink-muted); }
+
+/* ── Checkbox ────────────────────────────────── */
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.checkbox-item:hover { background: var(--bg-card2); }
+.checkbox-item input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+
+/* ── Page header ─────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 36px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--ink);
+}
+.page-title {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1;
+}
+.back-btn {
+  background: transparent;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: background 0.12s, color 0.12s;
+}
+.back-btn:hover {
+  background: var(--ink);
+  color: var(--bg-card);
+}
+
+/* ── Badge ───────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+}
+.badge-purple { color: var(--red); }
+.badge-success { color: var(--success); }
+
+/* ── Loading ─────────────────────────────────── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  gap: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border-dim);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Error ───────────────────────────────────── */
+.error-msg {
+  border: 2px solid var(--red);
+  color: var(--red);
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  background: rgba(232,0,28,.04);
+}
+
+/* ── Step indicator ──────────────────────────── */
+.steps { display: flex; gap: 4px; margin-bottom: 28px; }
+.step-dot {
+  width: 8px; height: 8px;
+  border: 2px solid var(--border-dim);
+  background: transparent;
+  transition: all 0.2s;
+}
+.step-dot.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  width: 20px;
+}
+.step-dot.done {
+  background: var(--success);
+  border-color: var(--success);
+}

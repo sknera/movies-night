@@ -1,0 +1,290 @@
+.history-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 36px 24px;
+}
+
+/* ── Search ──────────────────────────────────── */
+.history-search-wrap {
+  position: relative;
+  max-width: 360px;
+  margin-bottom: 24px;
+}
+.history-search {
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  background: var(--bg-card);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  outline: none;
+  transition: none;
+}
+.history-search:focus { border-color: var(--red); }
+.history-search::placeholder { color: var(--ink-muted); }
+.history-search-clear {
+  position: absolute;
+  right: 8px; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none;
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.12s;
+}
+.history-search-clear:hover { color: var(--ink); }
+
+/* ── Season columns ──────────────────────────── */
+.history-seasons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border: 2px solid var(--ink);
+  align-items: start;
+}
+@media (max-width: 900px) { .history-seasons { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .history-seasons { grid-template-columns: 1fr; } }
+
+.history-season-col {
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid var(--ink);
+}
+.history-season-col:last-child { border-right: none; }
+@media (max-width: 900px) {
+  .history-season-col:nth-child(2n) { border-right: none; }
+  .history-season-col:nth-child(1),
+  .history-season-col:nth-child(2) { border-bottom: 2px solid var(--ink); }
+}
+
+.season-col-header {
+  padding: 12px 12px 10px;
+  border-bottom: 2px solid var(--ink);
+  background: var(--bg-card);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.season-col-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.season-col-meta {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.season-nights {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Night card ──────────────────────────────── */
+.night-entry { display: flex; flex-direction: column; }
+
+.night-card {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-dim);
+  cursor: pointer;
+  padding: 9px 12px;
+  transition: background 0.1s;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+  border-left: 3px solid transparent;
+}
+.night-card:hover { background: var(--bg-card2); }
+.night-card-active {
+  background: var(--bg-card2);
+  border-left-color: var(--red);
+  border-bottom-color: transparent;
+}
+
+.night-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.night-name {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  flex: 1;
+  word-break: break-word;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.night-name-emoji {
+  font-size: 0.82rem;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+.night-count {
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  font-size: 0.62rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.night-people-count {
+  font-family: var(--font-mono);
+  color: var(--ink-muted);
+  font-size: 0.62rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+.night-host {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--red);
+  letter-spacing: 0.02em;
+}
+.night-avg-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  width: 100%;
+}
+.night-avg-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 400;
+  padding: 1px 4px;
+  line-height: 1.5;
+  opacity: 0.9;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #0d0d0d;
+}
+.badge-icon { font-size: 0.55rem; }
+
+.night-edit-btn {
+  background: none; border: none;
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.3;
+  transition: opacity 0.12s;
+}
+.night-card:hover .night-edit-btn { opacity: 0.7; }
+.night-edit-btn:hover { opacity: 1 !important; color: var(--red); }
+
+.night-expand-icon {
+  color: var(--ink-muted);
+  font-size: 0.58rem;
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+
+/* ── Night detail ────────────────────────────── */
+.nd-host {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-dim);
+  margin-bottom: 2px;
+  letter-spacing: 0.02em;
+}
+.nd-host strong { color: var(--red); font-weight: 700; }
+.nd-person-link { cursor: pointer; transition: opacity 0.12s; }
+.nd-person-link:hover { opacity: 0.65; }
+
+.night-detail {
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nd-movie-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.nd-movie-title {
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex: 1;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  letter-spacing: -0.01em;
+}
+.nd-movie-clickable { cursor: pointer; transition: color 0.12s; }
+.nd-movie-clickable:hover { color: var(--red); }
+.nd-badge { font-size: 0.6rem; line-height: 1; }
+.nd-movie-avg {
+  font-family: var(--font-mono);
+  color: var(--success);
+  font-size: 0.72rem;
+  font-weight: 400;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.nd-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.nd-score-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  padding: 2px 6px 2px 5px;
+  font-size: 0.67rem;
+}
+.nd-score-chip-clickable { cursor: pointer; transition: all 0.1s; }
+.nd-score-chip-clickable:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.nd-score-chip-clickable:hover .nd-score-person,
+.nd-score-chip-clickable:hover .nd-score-val { color: var(--bg-card); }
+
+.nd-score-missing { opacity: 0.3; }
+.nd-score-person {
+  font-family: var(--font-body);
+  color: var(--ink-muted);
+  font-weight: 600;
+  font-size: 0.67rem;
+  transition: color 0.1s;
+}
+.nd-score-val {
+  font-family: var(--font-mono);
+  color: var(--ink);
+  font-weight: 400;
+  font-size: 0.67rem;
+  transition: color 0.1s;
+}

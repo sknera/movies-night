@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    ports:
+      - "2000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATA_DIR=/app/data
+    restart: unless-stopped

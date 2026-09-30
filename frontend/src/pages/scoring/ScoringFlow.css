@@ -1,0 +1,320 @@
+.scoring-page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px 32px;
+}
+
+/* ── Setup ─────────────────────────────────────────────────────────────── */
+.setup-step {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.setup-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--purple-light);
+  margin-bottom: 10px;
+}
+
+.movie-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.movie-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.movie-input-num {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.movie-input-row input {
+  flex: 1;
+}
+
+.add-movie-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  color: var(--purple-light);
+  border-color: rgba(232,164,50,.3);
+}
+
+.start-btn { width: 100%; }
+
+/* ── Scoring header ─────────────────────────────────────────────────────── */
+.scoring-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+.scoring-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(232,164,50,.2);
+  flex-wrap: wrap;
+}
+.scoring-category {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: rgba(232,164,50,.15);
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.scoring-movie-info {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+}
+.movie-num {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.movie-title-big {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--white);
+}
+.movie-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.mdot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--bg-card2);
+  border: 2px solid rgba(232,164,50,.3);
+  transition: all .2s;
+}
+.mdot-active {
+  background: var(--purple-dark);
+  border-color: var(--purple-dark);
+  transform: scale(1.3);
+}
+.mdot-done { background: var(--success); border-color: var(--success); }
+
+/* ── Scores table ───────────────────────────────────────────────────────── */
+.scores-table-wrap {
+  overflow-x: auto;
+  padding-bottom: 8px;
+  flex: 1;
+}
+.scores-table {
+  display: flex;
+  gap: 4px;
+  min-width: max-content;
+}
+.person-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+  flex: 1;
+}
+.person-col-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 4px;
+  text-align: center;
+  border-bottom: 2px solid;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: default;
+}
+.person-selected-score {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.5;
+}
+.score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.person-col:hover .score-list {
+  max-height: 700px;
+}
+.score-btn {
+  width: 100%;
+  padding: 5px 2px;
+  border-radius: 5px;
+  border: 1px solid rgba(232,164,50,.2);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .12s;
+  text-align: center;
+}
+.score-btn:hover {
+  border-color: rgba(232,164,50,.6);
+  color: var(--white);
+  background: var(--bg-card2);
+}
+.score-btn-selected {
+  color: #fff !important;
+  font-weight: 800;
+  border-color: transparent;
+}
+
+/* ── Nav ────────────────────────────────────────────────────────────────── */
+.scoring-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 32px;
+  background: var(--bg);
+  border-top: 1px solid rgba(232,164,50,.2);
+  z-index: 50;
+}
+.scoring-step {
+  padding-bottom: 72px;
+}
+
+/* ── Done ───────────────────────────────────────────────────────────────── */
+.done-screen {
+  max-width: 480px;
+  margin: 60px auto 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.done-icon { font-size: 3.5rem; }
+.done-screen h2 { font-size: 1.8rem; color: var(--success); }
+.done-summary { color: var(--text-muted); line-height: 1.5; }
+.done-actions { display: flex; gap: 12px; }
+
+/* ── Presence picker ────────────────────────────────────────────────────── */
+.setup-count {
+  display: inline-block;
+  min-width: 22px;
+  padding: 0 6px;
+  margin-left: 6px;
+  background: var(--ink);
+  color: var(--bg);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.presence-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.presence-chip {
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  background: transparent;
+  border: 2px solid var(--border-dim);
+  border-radius: var(--radius);
+  color: var(--ink-muted);
+  cursor: pointer;
+  /* Absent reads as struck-through rather than merely dimmer, so a mis-tap is
+     obvious across the room on a phone. */
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  opacity: 0.65;
+  transition: opacity 0.12s, box-shadow 0.12s;
+}
+
+.presence-chip-on {
+  color: #fff;
+  opacity: 1;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+.presence-chip:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.setup-add-person {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 360px;
+}
+.setup-add-person input { flex: 1; }
+
+.setup-warning {
+  margin-top: 8px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--error);
+  border-left: 3px solid var(--error);
+  background: rgba(200, 0, 26, 0.07);
+}
+
+/* ── Unfinished-session banner ──────────────────────────────────────────── */
+.draft-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow);
+}
+.draft-banner-text { font-size: 0.9rem; }
+.draft-banner-actions { display: flex; gap: 8px; }
+
+.scoring-progress {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}

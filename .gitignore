@@ -1,0 +1,28 @@
+# Secrets — deploy credentials never belong in git
+.env.deploy
+.env
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+*.log
+
+# Workbook write locks / atomic-write temp files
+data/*.lock
+data/*.tmp
+data/*.json.tmp
+~$*.xlsx
+
+# macOS
+.DS_Store
+
+# Claude Code local machine settings (contains local credentials)
+.claude/settings.local.json
