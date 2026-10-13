@@ -1,3 +1,4 @@
+import { contrastText } from '../utils/contrast'
 import { motion } from 'framer-motion'
 import { avgColor } from '../utils/color'
 import { SEASONS } from '../constants/seasons'
@@ -51,9 +52,9 @@ function ScoreAreaChart({ scores }: { scores: Record<string, number> }) {
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} overflow="visible">
         <defs>
           <linearGradient id="mdm-grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#e74c3c" />
-            <stop offset="50%" stopColor="#f39c12" />
-            <stop offset="100%" stopColor="#2ecc71" />
+            <stop offset="0%" stopColor={avgColor(1)} />
+            <stop offset="50%" stopColor={avgColor(5.5)} />
+            <stop offset="100%" stopColor={avgColor(10)} />
           </linearGradient>
           <clipPath id="mdm-clip">
             <rect x="0" y="0" width={W} height={H} />
@@ -72,7 +73,7 @@ function ScoreAreaChart({ scores }: { scores: Record<string, number> }) {
               )}
             </g>
           ) : (
-            <circle key={s} cx={x} cy={H} r={2} fill="rgba(255,255,255,0.15)" />
+            <circle key={s} cx={x} cy={H} r={2} fill="var(--ink-muted)" />
           )
         )}
       </svg>
@@ -108,7 +109,7 @@ export default function MovieDetailModal({ title, season, category, host, averag
         <div className="mdm-header">
           <div className="mdm-meta">
             {seasonData && (
-              <span className="mdm-season-badge" style={{ background: seasonData.color }}>
+              <span className="mdm-season-badge" style={{ background: seasonData.color, color: contrastText(seasonData.color) }}>
                 {seasonData.name}
               </span>
             )}

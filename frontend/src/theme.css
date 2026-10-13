@@ -3,11 +3,11 @@
   --bg-card:    #f8f6f1;
   --bg-card2:   #e8e5de;
   --ink:        #28251f;
-  --ink-muted:  #837e75;
+  --ink-muted:  #625d54;
   --red:        #c8001a;
   --red-dim:    #960014;
   --border:     #28251f;
-  --border-dim: #c2bfb8;
+  --border-dim: #827b70;
   --success:    #1e6b32;
   --error:      #c8001a;
 
@@ -68,7 +68,7 @@ body {
   background: var(--ink);
   color: var(--bg-card);
 }
-.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn:disabled { opacity: 1; cursor: not-allowed; background: var(--bg-card2); color: var(--ink-muted); border-color: var(--border-dim); border-style: dashed; }
 
 .btn-primary {
   background: var(--ink);
@@ -86,6 +86,7 @@ body {
   border-color: var(--border-dim);
 }
 .btn-secondary:hover:not(:disabled) {
+  color: var(--ink);
   border-color: var(--ink);
   background: var(--bg-card2);
 }
@@ -95,7 +96,7 @@ body {
   border: 1px solid var(--border-dim);
 }
 .btn-ghost:hover:not(:disabled) {
-  color: var(--ink);
+  color: var(--bg-card);
   border-color: var(--ink);
 }
 .btn-danger {
@@ -146,7 +147,9 @@ select {
 input:focus, textarea:focus, select:focus {
   border-color: var(--ink);
 }
-input::placeholder { color: var(--ink-muted); }
+input::placeholder, textarea::placeholder { color: var(--ink-muted); opacity: 1; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+button:disabled, select:disabled { cursor: not-allowed; }
 
 /* ── Checkbox ────────────────────────────────── */
 .checkbox-item {
@@ -260,3 +263,17 @@ input::placeholder { color: var(--ink-muted); }
   background: var(--success);
   border-color: var(--success);
 }
+
+/* Keep restricted actions discoverable without suggesting they are available. */
+.admin-controls { border: 0; padding: 0; margin: 0; min-width: 0; }
+.admin-only-note { color: var(--ink-muted); font-size: .78rem; line-height: 1.4; }
+.admin-action { display: inline-flex; align-items: center; gap: .4rem; }
+.admin-controls:disabled button,
+.admin-controls:disabled input,
+.admin-controls:disabled select,
+input:disabled,
+.night-edit-btn:disabled {
+  color: var(--ink-muted); background: var(--bg-card2);
+  border-color: var(--border-dim); cursor: not-allowed; opacity: 1;
+}
+.admin-controls:disabled .sh-drag-handle { cursor: not-allowed; }

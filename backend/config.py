@@ -4,7 +4,7 @@ import re
 import colorsys
 from pathlib import Path
 
-from excel.locking import file_lock
+from excel.locking import file_lock, locked
 
 _default_data = Path(__file__).parent.parent / "data"
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(_default_data)))
@@ -100,6 +100,7 @@ def pick_free_color(used_colors) -> str:
     return _hue_to_hex(best)
 
 
+@locked(lambda: CONFIG_PATH)
 def ensure_person_color(name: str) -> str:
     """Give `name` a distinct colour if they do not have one yet."""
     config = load_config()

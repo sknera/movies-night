@@ -34,21 +34,21 @@ def test_full_movie_night(client):
         assert set(movie["scores"]) == set(people)
 
     # 2. Everyone adds a ticket for the next draw.
-    xero = wheel_entry(client, "Xero")
+    kaja = wheel_entry(client, "Kaja")
     r = client.post("/api/wheel/categories",
-                    json={"categories": {xero["key"]: ["Polskie kino"]}})
+                    json={"categories": {kaja["key"]: ["Polskie kino"]}})
     assert r.status_code == 200, r.text
-    assert "Polskie kino" in wheel_entry(client, "Xero")["categories"]
+    assert "Polskie kino" in wheel_entry(client, "Kaja")["categories"]
 
     # 3. Spin, and the winner becomes the next night's category.
     r = client.post("/api/wheel/spin",
-                    json={"person_key": xero["key"], "category": "Polskie kino"})
+                    json={"person_key": kaja["key"], "category": "Polskie kino"})
     assert r.status_code == 200, r.text
     nxt = client.get("/api/wheel/next-category").json()
-    assert nxt == {"category": "Polskie kino", "person": "Xero"}
+    assert nxt == {"category": "Polskie kino", "person": "Kaja"}
 
     # A drawn category leaves the wheel, so it cannot come up twice.
-    assert "Polskie kino" not in wheel_entry(client, "Xero")["categories"]
+    assert "Polskie kino" not in wheel_entry(client, "Kaja")["categories"]
 
 
 def test_absent_people_get_no_score(client):

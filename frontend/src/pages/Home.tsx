@@ -67,7 +67,7 @@ export default function Home() {
                   <div className="klaps-meta-label">NASTĘPNA NOC</div>
                   <div className="klaps-meta-val klaps-meta-val-highlight">
                     {nextDateStr}
-                    {nextNightTime && <span style={{ opacity: 0.7, marginLeft: 6, fontSize: '0.85em' }}>godz. {nextNightTime}</span>}
+                    {nextNightTime && <span style={{ marginLeft: 6, fontSize: '0.85em' }}>godz. {nextNightTime}</span>}
                   </div>
                 </div>
               )}
@@ -105,10 +105,16 @@ export default function Home() {
             transition={{ delay: 0.7 }}
           >
             <div className="ncb-label">Następny wieczór</div>
-            <div className="ncb-category">{nextCat.category}</div>
-            {nextCat.person && (
-              <div className="ncb-person">zaproponowane przez <strong>{nextCat.person}</strong></div>
-            )}
+            {(nextCat.themes ?? [nextCat]).map((theme, i) => <div key={i}>
+              <div className="ncb-category">{theme.category}</div>
+              {theme.person && <div className="ncb-person">zaproponowane przez <strong>{theme.person}</strong></div>}
+            </div>)}
+            {nextCat.mode === 'cohost' && !nextCat.pending && <div className="ncb-person">
+              Filmy wybierają: <strong>{nextCat.hosts?.join(' i ')}</strong>
+            </div>}
+            {nextCat.pending && <button className="btn btn-secondary btn-sm" onClick={() => nav('/wheel')}>
+              Dokończ drugie losowanie →
+            </button>}
           </motion.div>
         )}
 

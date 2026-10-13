@@ -1,3 +1,4 @@
+import { readableColor } from '../../utils/contrast'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -126,7 +127,7 @@ export default function StatsPage() {
             onClick={() => setSelectedPerson(p)}
           >
             <div className="stat-card-header">
-              <div className="stat-avatar" style={{ borderColor: p.color, color: p.color }}>{p.name.slice(0, 2)}</div>
+              <div className="stat-avatar" style={{ borderColor: readableColor(p.color), color: readableColor(p.color) }}>{p.name.slice(0, 2)}</div>
               <div className="stat-name">{p.name}</div>
             </div>
 
@@ -134,7 +135,7 @@ export default function StatsPage() {
               <div className="stat-row">
                 <div className="stat-row-label">Filmy</div>
                 <div className="stat-bar-wrap">
-                  <div className="stat-bar" style={{ width: `${(p.watched / maxWatched) * 100}%`, background: p.color }} />
+                  <div className="stat-bar" style={{ width: `${(p.watched / maxWatched) * 100}%`, background: readableColor(p.color) }} />
                 </div>
                 <div className="stat-row-val">{p.watched}</div>
               </div>
@@ -142,7 +143,7 @@ export default function StatsPage() {
               <div className="stat-row">
                 <div className="stat-row-label">Śr. ocena</div>
                 <div className="stat-bar-wrap">
-                  <div className="stat-bar" style={{ width: `${((p.average ?? 0) / maxAvg) * 100}%`, background: p.color, opacity: 0.75 }} />
+                  <div className="stat-bar" style={{ width: `${((p.average ?? 0) / maxAvg) * 100}%`, background: readableColor(p.color), opacity: 1 }} />
                 </div>
                 <div className="stat-row-val">{p.average !== null ? p.average.toFixed(2) : '—'}</div>
               </div>

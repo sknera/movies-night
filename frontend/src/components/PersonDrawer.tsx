@@ -1,3 +1,6 @@
+import { useAdminSession } from '../hooks/useAdminSession'
+import { contrastText } from '../utils/contrast'
+import { getErrorMessage } from '../utils/errors'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getPersonData, adminRenamePerson, setPersonColor } from '../api'
@@ -27,7 +30,9 @@ export default function PersonDrawer({
   onColorChanged: (name: string, color: string) => void
 }) {
   const [movies, setMovies] = useState<PersonMovie[]>([])
-  const [loadingMovies, setLoadingMovies] = useState(true)
+  const [loadedFor, setLoadedFor] = useState<string | null>(null)
+  const loadingMovies = loadedFor !== person.name
+  const [loadError, setLoadError] = useState('')
   const [selectedMovie, setSelectedMovie] = useState<PersonMovie | null>(null)
   const [renameVal, setRenameVal] = useState(person.name)
   const [renaming, setRenaming] = useState(false)
@@ -36,19 +41,25 @@ export default function PersonDrawer({
   const [colorVal, setColorVal] = useState(person.color)
   const [showPalette, setShowPalette] = useState(false)
   const colorTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const adminToken = sessionStorage.getItem('adminToken')
+  const adminToken = useAdminSession()
 
+  const onColorChangedRef = useRef(onColorChanged)
+  useEffect(() => { onColorChangedRef.current = onColorChanged }, [onColorChanged])
   useEffect(() => {
-    setLoadingMovies(true)
+    let active = true
     getPersonData(person.name)
       .then(d => {
+        if (!active) return
         setMovies(d.movies)
-        if (d.color && d.color !== colorVal) {
+        setLoadError('')
+        if (d.color) {
           setColorVal(d.color)
-          onColorChanged(person.name, d.color)
+          onColorChangedRef.current(person.name, d.color)
         }
       })
-      .finally(() => setLoadingMovies(false))
+      .catch(() => { if (active) { setMovies([]); setLoadError('Nie udało się pobrać filmów.') } })
+      .finally(() => { if (active) setLoadedFor(person.name) })
+    return () => { active = false }
   }, [person.name])
 
   const handleColorChange = (c: string) => {
@@ -69,8 +80,8 @@ export default function PersonDrawer({
       await adminRenamePerson(person.name, renameVal.trim(), adminToken)
       setRenameMsg(`✅ Zmieniono na: ${renameVal.trim()}`)
       setTimeout(() => { onRenamed(); onClose() }, 1200)
-    } catch (e: any) {
-      setRenameError(e?.response?.data?.detail || 'Błąd')
+    } catch (e) {
+      setRenameError(getErrorMessage(e, 'Błąd'))
     } finally {
       setRenaming(false)
     }
@@ -100,10 +111,11 @@ export default function PersonDrawer({
         transition={{ type: 'spring', stiffness: 280, damping: 30 }}
         onClick={e => e.stopPropagation()}
       >
+        {loadError && <div className="error-msg">{loadError}</div>}
         <div className="drawer-header">
           <div
             className="drawer-avatar drawer-avatar-pick"
-            style={{ background: colorVal }}
+            style={{ background: colorVal, color: contrastText(colorVal) }}
             onClick={() => setShowPalette(p => !p)}
             title="Zmień kolor"
           >
@@ -146,19 +158,21 @@ export default function PersonDrawer({
           </div>
         </div>
 
-        {adminToken && (
           <div className="drawer-section">
             <div className="drawer-section-title">Zmień imię</div>
+            {!adminToken && <p className="admin-only-note" id="rename-admin-note">Tylko dla administratora</p>}
             <div className="rename-row">
               <input
                 type="text"
+                disabled={!adminToken}
+                aria-describedby={!adminToken ? "rename-admin-note" : undefined}
                 value={renameVal}
                 onChange={e => setRenameVal(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleRename()}
               />
               <button
                 className="btn btn-primary btn-sm"
-                disabled={renaming || !renameVal.trim() || renameVal.trim() === person.name}
+                disabled={!adminToken || renaming || !renameVal.trim() || renameVal.trim() === person.name}
                 onClick={handleRename}
               >
                 {renaming ? '…' : 'Zapisz'}
@@ -167,7 +181,6 @@ export default function PersonDrawer({
             {renameMsg && <div className="rename-ok">{renameMsg}</div>}
             {renameError && <div className="error-msg">{renameError}</div>}
           </div>
-        )}
 
         <div className="drawer-section drawer-movies-section">
           <div className="drawer-section-title">Ocenione filmy ({movies.length})</div>
@@ -185,7 +198,7 @@ export default function PersonDrawer({
                       <div className="drawer-group-header">
                         <span
                           className="drawer-season-badge"
-                          style={{ background: SEASONS[season]?.color ?? '#674EA7' }}
+                          style={{ background: SEASONS[season]?.color ?? '#674EA7', color: contrastText(SEASONS[season]?.color ?? '#674EA7') }}
                         >
                           S{season}
                         </span>

@@ -1,18 +1,11 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { getErrorMessage } from '../../utils/errors'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import confetti from 'canvas-confetti'
-import { getWheelData, addCategories, addPerson, recordSpin, deleteLastSpin, getWheelCandidates, resurfacePerson } from '../../api'
-import type { WheelData, WheelEntry, HistoryEntry, NextCategory, WheelCandidate } from '../../api'
-import CasinoWheel from '../../components/CasinoWheel'
+import { getWheelData, addCategories, addPerson } from '../../api'
+import type { WheelData, WheelEntry, HistoryEntry } from '../../api'
+import DrawWheel from './DrawWheel'
 import './WheelPage.css'
-
-interface CategorySlot {
-  category: string
-  personName: string
-  personKey: string
-  weight: number
-}
 
 type View = 'wheel' | 'addCats' | 'history'
 
@@ -102,380 +95,48 @@ function CategoriesModal({ entry, onClose }: { entry: WheelEntry; onClose: () =>
 export default function WheelPage() {
   const nav = useNavigate()
   const [data, setData] = useState<WheelData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [view, setView] = useState<View>('addCats')
-  const [spinning, setSpinning] = useState(false)
-  const [targetIdx, setTargetIdx] = useState<number | null>(null)
-  const [result, setResult] = useState<{ category: string; personName: string; personKey: string } | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [undoing, setUndoing] = useState(false)
-  const [undone, setUndone] = useState(false)
-  const [nextCategory, setNextCategory] = useState<NextCategory | null>(null)
-  const [confirmOverwrite, setConfirmOverwrite] = useState(false)
-  const [undoNote, setUndoNote] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
   const reload = useCallback(() => {
-    setLoading(true)
+    getWheelData().then(d => { setData(d); setError('') })
+      .catch(() => setError('Nie udało się odświeżyć koła.'))
+  }, [])
+
+  useEffect(() => {
     getWheelData().then(d => {
       setData(d)
-      setNextCategory(d.next_category)
-    }).finally(() => setLoading(false))
+      if (d.active_draw?.pending) setView('wheel')
+    }).catch(() => setError('Nie można załadować danych.'))
   }, [])
 
-  // Refresh without flipping `loading`: the spinner would unmount the add-cats
-  // grid and take its confirmation toast with it.
-  const reloadQuiet = useCallback(() => {
-    getWheelData().then(d => {
-      setData(d)
-      setNextCategory(d.next_category)
-    })
-  }, [])
-
-  useEffect(() => { reload() }, [reload])
-
-  const slots = useMemo((): CategorySlot[] => {
-    if (!data) return []
-    return data.entries.flatMap(entry =>
-      entry.categories.map(cat => ({
-        category: cat,
-        personName: entry.name,
-        personKey: entry.key,
-        weight: entry.probability / Math.max(1, entry.categories.length),
-      }))
-    )
-  }, [data])
-
-  const shuffledIndices = useMemo(() => {
-    const indices = Array.from({ length: slots.length }, (_, i) => i)
-    for (let i = indices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[indices[i], indices[j]] = [indices[j], indices[i]]
-    }
-    return indices
-  }, [slots])
-
-  const wheelItems = useMemo(
-    () => shuffledIndices.map(i => slots[i].category),
-    [shuffledIndices, slots]
-  )
-
-  const pickWinner = useCallback((slots: CategorySlot[]) => {
-    const total = slots.reduce((s, c) => s + c.weight, 0)
-    let rand = Math.random() * total
-    for (let i = 0; i < slots.length; i++) {
-      rand -= slots[i].weight
-      if (rand <= 0) return i
-    }
-    return slots.length - 1
-  }, [])
-
-  const doSpin = useCallback(() => {
-    let slotIdx: number
-    const fs = data?.forced_spin
-    if (fs) {
-      const forced = slots.findIndex(s => s.personKey === fs.person_key && s.category === fs.category)
-      slotIdx = forced !== -1 ? forced : pickWinner(slots)
-    } else {
-      slotIdx = pickWinner(slots)
-    }
-    const wheelIdx = shuffledIndices.indexOf(slotIdx)
-    setTargetIdx(wheelIdx !== -1 ? wheelIdx : 0)
-    setSpinning(true)
-    setResult(null)
-    setSaved(false)
-    setSaveError(null)
-  }, [slots, shuffledIndices, pickWinner, data])
-
-  const handleSpin = () => {
-    if (spinning || slots.length === 0) return
-    if (nextCategory && !data?.forced_spin && !confirmOverwrite) {
-      setConfirmOverwrite(true)
-      return
-    }
-    setConfirmOverwrite(false)
-    doSpin()
-  }
-
-  const handleAnimationEnd = useCallback(() => {
-    if (targetIdx === null) return
-    const slot = slots[shuffledIndices[targetIdx]]
-    const spinResult = { category: slot.category, personName: slot.personName, personKey: slot.personKey }
-    setResult(spinResult)
-    setSpinning(false)
-    setSaving(true)
-
-    recordSpin(spinResult.personKey, spinResult.category)
-      .then(() => { setSaved(true); reload() })
-      .catch((e: any) => setSaveError(e?.response?.data?.detail || 'Błąd zapisu'))
-      .finally(() => setSaving(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    setTimeout(() => {
-      confetti({ particleCount: 180, spread: 80, origin: { y: 0.5 }, colors: ['#674EA7', '#B4A7D6', '#ffffff', '#A383DA', '#5E3A8C'], ticks: 300 })
-      confetti({ particleCount: 80, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#674EA7', '#B4A7D6', '#ffffff'] })
-      confetti({ particleCount: 80, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#674EA7', '#B4A7D6', '#ffffff'] })
-    }, 100)
-  }, [targetIdx, slots, shuffledIndices, reload])
-
-  const handleNewSpin = () => {
-    setResult(null)
-    setTargetIdx(null)
-    setSaved(false)
-    setSaveError(null)
-    setUndone(false)
-    setUndoNote(null)
-  }
-
-  const handleUnsave = async () => {
-    setUndoing(true)
-    try {
-      const res = await deleteLastSpin()
-      setUndone(true)
-      setSaved(false)
-      setUndoNote(
-        res.category_restored
-          ? `Kategoria „${res.removed.category}” wróciła na koło`
-          : `Kategoria „${res.removed.category}” była już na kole`
-      )
-      reload()
-    } catch (e: any) {
-      setSaveError(e?.response?.data?.detail || 'Nie udało się cofnąć losowania')
-    } finally {
-      setUndoing(false)
-    }
-  }
-
-  if (loading) return <div className="loading"><div className="spinner" /><span>Ładowanie…</span></div>
-  if (!data) return <div className="error-msg">Nie można załadować danych</div>
+  if (!data) return error
+    ? <div className="error-msg">{error}<button className="btn" onClick={reload}>Spróbuj ponownie</button></div>
+    : <div className="loading"><div className="spinner" /><span>Ładowanie…</span></div>
 
   return (
     <div className="wheel-page">
       <div className="page-header">
-        <button className="back-btn" onClick={() => nav('/')}>← Wróć</button>
+        <button className="back-btn" disabled={busy} onClick={() => nav('/')}>← Wróć</button>
         <span className="page-title">Kręć kołem! 🎡</span>
         <div className="wheel-header-btns">
-          {view !== 'history' && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setView('history')}>📜 Historia</button>
-          )}
-          <button className="btn btn-secondary btn-sm" onClick={() => setView(v => (v === 'addCats' || v === 'history') ? 'wheel' : 'addCats')}>
-            {view === 'addCats' || view === 'history' ? '← Koło' : '+ Kategorie'}
+          {view !== 'history' && <button className="btn btn-ghost btn-sm" disabled={busy}
+            onClick={() => setView('history')}>📜 Historia</button>}
+          <button className="btn btn-secondary btn-sm" disabled={busy}
+            onClick={() => setView(v => v === 'wheel' ? 'addCats' : 'wheel')}>
+            {view === 'wheel' ? '+ Kategorie' : '← Koło'}
           </button>
         </div>
       </div>
-
-      <AnimatePresence mode="wait">
-        {view === 'history' && (
-          <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <HistoryView history={data.history} entries={data.entries} />
-          </motion.div>
-        )}
-
-        {view === 'addCats' && (
-          <motion.div key="addcats" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <AddCategoriesView
-              entries={data.entries}
-              onGoToWheel={() => { reload(); setView('wheel') }}
-              onReload={reloadQuiet}
-            />
-          </motion.div>
-        )}
-
-        {view === 'wheel' && (
-          <motion.div key="wheel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="wheel-main">
-            <div className="wheel-area">
-              <CasinoWheel
-                items={wheelItems}
-                spinning={spinning}
-                targetIndex={targetIdx}
-                onAnimationEnd={handleAnimationEnd}
-              />
-              <button
-                className={`spin-btn ${spinning ? 'spin-btn-spinning' : ''}`}
-                onClick={handleSpin}
-                disabled={spinning || slots.length === 0}
-              >
-                {spinning ? '…' : 'KRĘĆ!'}
-              </button>
-            </div>
-
-            <div className="wheel-right">
-              <AnimatePresence mode="wait">
-                {confirmOverwrite && nextCategory && (
-                  <motion.div
-                    key="confirm"
-                    className="spin-confirm"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-                  >
-                    <div className="spin-confirm-label">Kategoria już jest ustawiona:</div>
-                    <div className="spin-confirm-cat">{nextCategory.category}</div>
-                    {nextCategory.person && (
-                      <div className="spin-confirm-person">zaproponowane przez <strong>{nextCategory.person}</strong></div>
-                    )}
-                    <div className="spin-confirm-question">Na pewno wylosować nową?</div>
-                    <div className="spin-confirm-actions">
-                      <button className="btn btn-ghost btn-sm" onClick={() => setConfirmOverwrite(false)}>
-                        Anuluj
-                      </button>
-                      <button className="btn btn-primary btn-sm" onClick={() => { setConfirmOverwrite(false); doSpin() }}>
-                        Tak, losuj nową
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-                {!confirmOverwrite && result && (
-                  <motion.div
-                    key="result"
-                    className="result-card"
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                  >
-                    <div className="result-label">Wylosowano!</div>
-                    <div className="result-category">{result.category}</div>
-                    <div className="result-divider">zaproponowane przez</div>
-                    <div className="result-person">{result.personName}</div>
-
-                    {saving && <div className="saving-indicator">Zapisuję…</div>}
-                    {saved && !undone && <div className="saved-ok">✅ Zapisano!</div>}
-                    {undone && (
-                      <div className="unsave-ok">
-                        🗑 Nie zapisano
-                        {undoNote && <div className="unsave-note">{undoNote}</div>}
-                      </div>
-                    )}
-                    {saveError && (
-                      <div className="error-msg" style={{ marginTop: 8 }}>{saveError}</div>
-                    )}
-
-                    {saved && !undone && (
-                      <button
-                        className="btn btn-ghost btn-sm unsave-btn"
-                        onClick={handleUnsave}
-                        disabled={undoing}
-                      >
-                        {undoing ? '…' : 'Nie zapisuj'}
-                      </button>
-                    )}
-
-                    <button className="btn btn-ghost btn-sm" onClick={handleNewSpin} style={{ marginTop: 4 }}>
-                      Zakręć ponownie
-                    </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => nav('/scoring')} style={{ marginTop: 4 }}>
-                      Przejdź do oceniania →
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {error && <div className="error-msg" role="alert">{error}</div>}
+      {view === 'history' && <HistoryView history={data.history} entries={data.entries} />}
+      {view === 'addCats' && <AddCategoriesView entries={data.entries}
+        onGoToWheel={() => { reload(); setView('wheel') }} onReload={reload} />}
+      {view === 'wheel' && <DrawWheel data={data} onReload={reload} onBusy={setBusy} onScoring={() => nav('/scoring')} />}
     </div>
   )
 }
-
-// ── Re-surface person modal ─────────────────────────────────────────────────
-function ResurfacePersonModal({
-  onClose,
-  onAdded,
-}: {
-  onClose: () => void
-  onAdded: (name: string) => void
-}) {
-  const [candidates, setCandidates] = useState<WheelCandidate[] | null>(null)
-  const [query, setQuery] = useState('')
-  const [busy, setBusy] = useState<string | null>(null)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    getWheelCandidates()
-      .then(setCandidates)
-      .catch(() => setError('Nie udało się pobrać listy osób'))
-  }, [])
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!candidates) return []
-    if (!q) return candidates
-    return candidates.filter(c => c.name.toLowerCase().includes(q))
-  }, [candidates, query])
-
-  const handlePick = async (name: string) => {
-    if (busy) return
-    setBusy(name)
-    setError('')
-    try {
-      await resurfacePerson(name)
-      onAdded(name)
-      onClose()
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Błąd dodawania')
-      setBusy(null)
-    }
-  }
-
-  return (
-    <motion.div
-      className="cat-modal-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className="cat-modal"
-        initial={{ scale: 0.92, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.92, opacity: 0 }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="cat-modal-header">
-          <div className="cat-modal-name">Często pojawiające się osoby</div>
-          <button className="cat-modal-close" onClick={onClose}>✕</button>
-        </div>
-
-        <div className="resurface-search">
-          <input
-            type="text"
-            autoFocus
-            placeholder="Szukaj imienia…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
-        </div>
-
-        {error && <div className="resurface-error">{error}</div>}
-
-        <div className="cat-modal-list">
-          {candidates === null ? (
-            <div className="cat-modal-empty">Ładowanie…</div>
-          ) : filtered.length === 0 ? (
-            <div className="cat-modal-empty">Brak pasujących osób</div>
-          ) : (
-            <div className="resurface-chips">
-              {filtered.map(c => (
-                <button
-                  key={c.name}
-                  className="resurface-chip"
-                  disabled={busy !== null}
-                  onClick={() => handlePick(c.name)}
-                  title="Dodaj z powrotem do koła"
-                >
-                  {busy === c.name ? '…' : c.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
 
 // ── Add Categories View ─────────────────────────────────────────────────────
 function AddCategoriesView({ entries, onGoToWheel, onReload }: {
@@ -496,7 +157,6 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
   const [newPersonName, setNewPersonName] = useState('')
   const [addingPerson, setAddingPerson] = useState(false)
   const [addPersonMsg, setAddPersonMsg] = useState<{ ok: boolean; text: string } | null>(null)
-  const [resurfaceOpen, setResurfaceOpen] = useState(false)
   const [justAdded, setJustAdded] = useState<string | null>(null)
 
   // Once the reload brings the new person's card in, scroll to it and put the
@@ -544,8 +204,8 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
       flashToast(key, `✓ Dodano „${val}”`)
       // Refresh counts/probabilities so the card stops reading "0 / brak kategorii".
       onReload()
-    } catch (e: any) {
-      setErrors(err => ({ ...err, [key]: e?.response?.data?.detail || 'Błąd' }))
+    } catch (e) {
+      setErrors(err => ({ ...err, [key]: getErrorMessage(e, 'Błąd') }))
     } finally {
       setSavingKey(null)
     }
@@ -564,8 +224,8 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
       // now type their categories.
       setJustAdded(name)
       onReload()
-    } catch (e: any) {
-      setAddPersonMsg({ ok: false, text: e?.response?.data?.detail || 'Błąd dodawania' })
+    } catch (e) {
+      setAddPersonMsg({ ok: false, text: getErrorMessage(e, 'Błąd dodawania') })
     } finally {
       setAddingPerson(false)
     }
@@ -660,15 +320,7 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
             </div>
           )}
 
-          <button
-            className="btn btn-secondary btn-sm resurface-btn"
-            onClick={() => setResurfaceOpen(true)}
-          >
-            ↩ Dodaj do często pojawiających się osób
-          </button>
-          <div className="resurface-hint">
-            Przywróć kogoś, kto bywał wcześniej, a teraz nie ma go na kole.
-          </div>
+
         </div>
 
         <div className="add-cats-footer">
@@ -679,15 +331,6 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
       <AnimatePresence>
         {modalEntry && (
           <CategoriesModal entry={modalEntry} onClose={() => setModalEntry(null)} />
-        )}
-        {resurfaceOpen && (
-          <ResurfacePersonModal
-            onClose={() => setResurfaceOpen(false)}
-            onAdded={name => {
-              setAddPersonMsg({ ok: true, text: `✅ Przywrócono: ${name}` })
-              onReload()
-            }}
-          />
         )}
       </AnimatePresence>
     </>

@@ -100,8 +100,8 @@
 .enm-input {
   width: 52px;
   text-align: center;
-  background: rgba(13, 13, 13, 0.1);
-  border: 1px solid rgba(13, 13, 13, 0.25);
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
   border-radius: 6px;
   color: var(--white);
   font-size: 0.82rem;
@@ -111,9 +111,9 @@
 .enm-input:focus {
   outline: none;
   border-color: var(--purple-light);
-  background: rgba(13, 13, 13, 0.18);
+  background: var(--bg-card2);
 }
-.enm-input::placeholder { color: rgba(255,255,255,0.2); }
+.enm-input::placeholder { color: var(--ink-muted); }
 
 .enm-th-del {
   width: 36px;
@@ -132,7 +132,7 @@
   border: none;
   cursor: pointer;
   font-size: 0.8rem;
-  opacity: 0.35;
+  opacity: 1;
   padding: 2px 4px;
   line-height: 1;
   transition: opacity 0.15s;
@@ -146,20 +146,20 @@
 }
 
 .enm-row-del-yes {
-  background: rgba(231, 76, 60, 0.15);
+  background: var(--bg-card);
   border: 1px solid rgba(231, 76, 60, 0.5);
-  color: #e74c3c;
+  color: var(--error);
   border-radius: 4px;
   font-size: 0.7rem;
   padding: 2px 5px;
   cursor: pointer;
   transition: background 0.15s;
 }
-.enm-row-del-yes:hover { background: rgba(231, 76, 60, 0.3); }
-.enm-row-del-yes:disabled { opacity: 0.5; cursor: not-allowed; }
+.enm-row-del-yes:hover { background: var(--bg-card2); }
+.enm-row-del-yes:disabled { opacity: 1; cursor: not-allowed; }
 
 .enm-row-del-no {
-  background: rgba(255,255,255,0.05);
+  background: var(--bg-card);
   border: 1px solid rgba(255,255,255,0.15);
   color: var(--text-muted);
   border-radius: 4px;
@@ -168,7 +168,7 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.enm-row-del-no:hover { background: rgba(255,255,255,0.1); }
+.enm-row-del-no:hover { background: var(--bg-card2); }
 
 .enm-add-person {
   display: flex;
@@ -186,15 +186,15 @@
 }
 
 .enm-select {
-  background: rgba(13, 13, 13, 0.12);
-  border: 1px solid rgba(13, 13, 13, 0.3);
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
   border-radius: 6px;
   color: var(--white);
   font-size: 0.82rem;
   padding: 5px 8px;
   cursor: pointer;
 }
-.enm-select option { background: #1a1228; }
+.enm-select option { background: var(--bg-card); }
 
 .enm-footer {
   display: flex;
@@ -212,26 +212,13 @@
 }
 
 .enm-delete-btn {
-  color: rgba(231, 76, 60, 0.7);
+  color: var(--error);
   font-size: 0.78rem;
 }
-.enm-delete-btn:hover { color: #e74c3c; }
+.enm-delete-btn:hover { color: var(--error); }
 
 .enm-delete-confirm-label {
   font-size: 0.82rem;
-  color: #e74c3c;
+  color: var(--error);
   flex: 1;
 }
-
-.btn-danger {
-  background: rgba(231, 76, 60, 0.15);
-  border: 1px solid rgba(231, 76, 60, 0.5);
-  color: #e74c3c;
-  padding: 5px 14px;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.btn-danger:hover { background: rgba(231, 76, 60, 0.25); border-color: #e74c3c; }
-.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }

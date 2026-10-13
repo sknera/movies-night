@@ -1,3 +1,4 @@
+import { contrastText } from '../utils/contrast'
 import { useRef, useEffect, useCallback } from 'react'
 import type { WheelEntry } from '../api'
 
@@ -89,7 +90,7 @@ export default function SpinWheel({ entries, spinning, targetIndex, onAnimationE
       // Name
       const fontSize = Math.max(9, Math.min(14, maxWidth / (entry.name.length * 0.55)))
       ctx.font = `bold ${fontSize}px 'Segoe UI', sans-serif`
-      ctx.fillStyle = 'rgba(255,255,255,0.95)'
+      ctx.fillStyle = contrastText(color)
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       const displayName = entry.name.length > 10 ? entry.name.slice(0, 9) + '…' : entry.name
@@ -97,7 +98,7 @@ export default function SpinWheel({ entries, spinning, targetIndex, onAnimationE
 
       // Category count badge
       ctx.font = `${Math.max(7, fontSize - 2)}px 'Segoe UI', sans-serif`
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'
+      ctx.fillStyle = contrastText(color)
       ctx.fillText(`${entry.count}`, 0, fontSize * 0.6)
 
       ctx.restore()

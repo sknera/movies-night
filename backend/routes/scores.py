@@ -1,12 +1,13 @@
 import re
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, Annotated
+from excel.locking import locked
 from excel.scores import get_all_movies, get_season4_people, save_session, get_all_nights, get_last_night_people, get_people_for_season, get_all_header_people
 from excel.wheel import get_wheel_data, find_category_owner
 from config import (
     get_hidden_people, get_person_color, normalize_name, load_config, save_config,
-    CURRENT_SEASON,
+    CURRENT_SEASON, CONFIG_PATH,
 )
 
 router = APIRouter()
@@ -16,7 +17,8 @@ class SessionPayload(BaseModel):
     movies: list[str]
     category: Optional[str] = None
     present_people: list[str]
-    scores: dict[str, dict[str, Optional[float]]]
+    scores: dict[str, dict[str, Optional[Annotated[float, Field(ge=1, le=10, allow_inf_nan=False)]]]]
+    movie_categories: dict[str, str] | None = None
 
 
 @router.get("/movies")
@@ -112,12 +114,13 @@ def get_nights():
 
         season_key = str(night["season"])
         config_val = config_hosts.get(season_key, {}).get(name)
-        host: str | None = config_val if config_val is not None else wheel_host.get(name.strip().lower())
+        host: str | None = (" + ".join(normalize_name(h) for h in night["hosts"]) or None) if night.get("hosts") is not None else (config_val if config_val is not None else wheel_host.get(name.strip().lower()))
         normalized_movies = []
         for movie in night["movies"]:
             normalized_scores = {normalize_name(p): s for p, s in movie.get("scores", {}).items()}
             normalized_movies.append({
                 "title": movie["title"],
+                "category": movie.get("category"),
                 "average": movie["average"],
                 "scores": normalized_scores,
                 "row_num": movie.get("row_num"),
@@ -164,6 +167,7 @@ class ColorPayload(BaseModel):
 
 
 @router.put("/person/{name}/color")
+@locked(lambda: CONFIG_PATH)
 def set_person_color(name: str, payload: ColorPayload):
     if not re.match(r'^#[0-9a-fA-F]{6}$', payload.color):
         raise HTTPException(400, "Invalid color — use #RRGGBB")
@@ -293,7 +297,8 @@ def _retire_category(config: dict, category: str) -> None:
     spun for -- typed by hand, or set by the admin as the forced winner.
     """
     nc = config.get("next_category") or {}
-    host = nc.get("person") if nc.get("category", "").strip().lower() == category.lower() else None
+    themes = nc.get("themes") or [nc]
+    host = next((t.get("person") for t in themes if t.get("category", "").strip().lower() == category.lower()), None)
     if not host:
         owner = find_category_owner(category)
         host = normalize_name(owner) if owner else None
@@ -304,33 +309,64 @@ def _retire_category(config: dict, category: str) -> None:
 
 
 @router.post("/session")
+@locked(lambda: CONFIG_PATH)
 def submit_session(payload: SessionPayload):
     titles = [m.strip() for m in payload.movies if m and m.strip()]
     if not titles:
         raise HTTPException(400, "Podaj przynajmniej jeden film")
     # Scores are keyed by title, so two rows with the same title would share
     # one set of scores and silently overwrite each other.
-    dupes = {t for t in titles if titles.count(t) > 1}
+    folded = [t.casefold() for t in titles]
+    dupes = {t for t in titles if folded.count(t.casefold()) > 1}
     if dupes:
         raise HTTPException(400, f"Powtórzony tytuł filmu: {', '.join(sorted(dupes))}")
 
+    category = (payload.category or "").strip()
+    movie_categories = payload.movie_categories
+    categories = [category] if category else []
+    if movie_categories is not None:
+        if set(movie_categories) != set(titles) or any(not c.strip() for c in movie_categories.values()):
+            raise HTTPException(400, "Przypisz temat do każdego filmu.")
+        movie_categories = {m: c.strip() for m, c in movie_categories.items()}
+        categories = list(dict.fromkeys(movie_categories.values()))
+        if len(categories) > 2:
+            raise HTTPException(400, "Nocka może mieć maksymalnie dwa tematy.")
+        category = " + ".join(categories)
+    config = load_config()
+    nc = config.get("next_category")
+    if (config.get("active_draw") or {}).get("pending"):
+        raise HTTPException(409, "Najpierw dokończ lub cofnij losowanie.")
     try:
         # Filter out None scores
         clean_scores = {
-            movie: {person: score for person, score in person_scores.items() if score is not None}
+            movie.strip(): {person: score for person, score in person_scores.items() if score is not None}
             for movie, person_scores in payload.scores.items()
         }
-        save_session(titles, payload.category, clean_scores, payload.present_people)
+        for theme in categories:
+            _retire_category(config, theme)
+        saved_hosts = config.get("category_hosts", {}).get(str(CURRENT_SEASON), {})
+        matched_next = nc and {c.lower() for c in categories} == {
+            t["category"].strip().lower() for t in (nc.get("themes") or [nc])
+        }
+        night_hosts = (nc.get("hosts") or [nc["person"]]) if matched_next else [
+            h for c in categories for h in (saved_hosts.get(c) or "").split(" + ") if h
+        ]
+        night_hosts = list(dict.fromkeys(normalize_name(h) for h in night_hosts))
+        save_session(titles, category, clean_scores, payload.present_people, movie_categories, night_hosts)
 
-        category = (payload.category or "").strip()
         if category:
-            config = load_config()
-            nc = config.get("next_category")
-            _retire_category(config, category)
+            hosts = config["category_hosts"][str(CURRENT_SEASON)]
+            if len(categories) > 1:
+                hosts[category] = " + ".join(dict.fromkeys(hosts[c] for c in categories if hosts.get(c))) or None
             # Clear next_category when scores for that category are submitted
-            if nc and nc.get("category", "").lower() == category.lower():
+            if matched_next:
                 config.pop("next_category", None)
-            save_config(config)
+                if nc.get("hosts"):
+                    hosts[category] = " + ".join(nc["hosts"])
+        # A scored night must never be undone by a stale wheel tab.
+        config.pop("active_draw", None)
+        config.pop("last_spin_undo", None)
+        save_config(config)
         return {"ok": True}
     except HTTPException:
         raise

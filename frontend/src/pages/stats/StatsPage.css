@@ -150,11 +150,11 @@
   .stat-card:nth-child(n) { border-right: none; }
 }
 
-.stat-card:hover { background: var(--ink); }
-.stat-card:hover .stat-name { color: var(--bg-card); }
-.stat-card:hover .stat-row-label { color: rgba(255,255,255,0.5); }
-.stat-card:hover .stat-row-val { color: var(--bg-card); }
-.stat-card:hover .stat-bar-wrap { background: rgba(255,255,255,.12); }
+.stat-card:hover { background: var(--bg-card2); }
+.stat-card:hover .stat-name { color: var(--ink); }
+.stat-card:hover .stat-row-label { color: var(--ink-muted); }
+.stat-card:hover .stat-row-val { color: var(--ink); }
+.stat-card:hover .stat-bar-wrap { background: var(--bg-card); }
 .stat-card:hover .stat-avatar { box-shadow: none; }
 
 /* Colored top border = person color */
@@ -188,7 +188,7 @@
   letter-spacing: 0;
 }
 .stat-card:hover .stat-avatar {
-  background: transparent;
+  background: var(--bg-card);
   border-color: currentColor !important;
 }
 

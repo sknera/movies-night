@@ -1,5 +1,7 @@
 import os
+import json
 import openpyxl
+from openpyxl.comments import Comment
 from openpyxl.styles import PatternFill, Font
 from pathlib import Path
 from typing import Optional
@@ -34,6 +36,22 @@ def _row_has_scores(row, people_cols: dict) -> bool:
         for col in people_cols
         if col - 1 < len(row)
     )
+
+
+def _row_metadata(row) -> dict:
+    comment = row[0].comment
+    if comment and comment.author == "Movie Night":
+        try:
+            value = json.loads(comment.text)
+            return value if isinstance(value, dict) else {}
+        except ValueError:
+            pass
+    return {}
+
+
+def _is_movie_row(row, people_cols: dict) -> bool:
+    # New films remain films even if everyone skipped scoring them.
+    return _row_metadata(row).get("type") == "movie" or _row_has_scores(row, people_cols)
 
 
 def _extract_scores(row, people_cols: dict) -> dict:
@@ -83,13 +101,13 @@ def parse_season4(wb) -> list:
         title = str(title).strip()
         if not title:
             continue
-        if not _row_has_scores(row, people_cols):
+        if not _is_movie_row(row, people_cols):
             current_category = title
             continue
         scores = _extract_scores(row, people_cols)
         movies.append({
             "title": title,
-            "category": current_category,
+            "category": _row_metadata(row).get("category") or current_category,
             "season": 4,
             "average": _get_avg(row, scores),
             "scores": scores,
@@ -112,7 +130,7 @@ def parse_season3(wb) -> list:
             continue
         if title.lower() in ("średnia nocy", "srednia nocy"):
             continue
-        if not _row_has_scores(row, people_cols):
+        if not _is_movie_row(row, people_cols):
             current_category = title
             continue
         scores = _extract_scores(row, people_cols)
@@ -137,7 +155,7 @@ def parse_season2(wb) -> list:
         title = str(title).strip()
         if not title or title.lower() in ("średnia nocy", "srednia nocy"):
             continue
-        if not _row_has_scores(row, people_cols):
+        if not _is_movie_row(row, people_cols):
             continue
         scores = _extract_scores(row, people_cols)
         movies.append({
@@ -161,7 +179,7 @@ def parse_season1(wb) -> list:
         title = str(title).strip()
         if not title:
             continue
-        if not _row_has_scores(row, people_cols):
+        if not _is_movie_row(row, people_cols):
             continue
         scores = _extract_scores(row, people_cols)
         movies.append({
@@ -174,6 +192,7 @@ def parse_season1(wb) -> list:
     return movies
 
 
+@locked(lambda: SCORES_PATH)
 def get_all_header_people() -> list[str]:
     """Return all raw person names from all seasons' column headers."""
     wb = openpyxl.load_workbook(SCORES_PATH, data_only=True)
@@ -188,6 +207,7 @@ def get_all_header_people() -> list[str]:
     return list(seen.values())
 
 
+@locked(lambda: SCORES_PATH)
 def get_all_movies() -> list:
     wb = openpyxl.load_workbook(SCORES_PATH, data_only=True)
     result = []
@@ -202,15 +222,17 @@ def _parse_nights_from_sheet(ws, people_cols: dict, start_row: int, has_categori
     nights = []
     current_name = None
     current_movies = []
+    current_hosts = None
 
     for row in ws.iter_rows(min_row=start_row):
         title = row[0].value
         if title is None or (isinstance(title, str) and not title.strip()):
             # Blank row: split night for non-category seasons
             if not has_categories and current_movies:
-                nights.append({"name": current_name, "movies": current_movies})
+                nights.append({"name": current_name, "movies": current_movies, "hosts": current_hosts})
                 current_movies = []
                 current_name = None
+                current_hosts = None
             continue
         if _is_formula(str(title)):
             continue
@@ -218,29 +240,32 @@ def _parse_nights_from_sheet(ws, people_cols: dict, start_row: int, has_categori
 
         if title.lower() in ("średnia nocy", "srednia nocy"):
             if current_movies:
-                nights.append({"name": current_name, "movies": current_movies})
+                nights.append({"name": current_name, "movies": current_movies, "hosts": current_hosts})
             current_movies = []
             current_name = None
+            current_hosts = None
             continue
 
-        if not _row_has_scores(row, people_cols):
+        if not _is_movie_row(row, people_cols):
             if has_categories:
                 if current_movies:
-                    nights.append({"name": current_name, "movies": current_movies})
+                    nights.append({"name": current_name, "movies": current_movies, "hosts": current_hosts})
                 current_name = title
+                current_hosts = _row_metadata(row).get("hosts")
                 current_movies = []
             continue
 
         scores = _extract_scores(row, people_cols)
         avg = _get_avg(row, scores)
-        current_movies.append({"title": title, "average": avg, "scores": scores, "row_num": row[0].row})
+        current_movies.append({"title": title, "category": _row_metadata(row).get("category") or current_name, "average": avg, "scores": scores, "row_num": row[0].row})
 
     if current_movies:
-        nights.append({"name": current_name, "movies": current_movies})
+        nights.append({"name": current_name, "movies": current_movies, "hosts": current_hosts})
 
     return nights
 
 
+@locked(lambda: SCORES_PATH)
 def get_all_nights() -> list:
     wb = openpyxl.load_workbook(SCORES_PATH, data_only=True)
     result = []
@@ -277,6 +302,7 @@ def get_all_nights() -> list:
     return result
 
 
+@locked(lambda: SCORES_PATH)
 def get_last_night_people() -> list:
     wb = openpyxl.load_workbook(SCORES_PATH, data_only=True)
     ws4 = wb["Sezon 4 - Oceny"]
@@ -292,6 +318,7 @@ def get_last_night_people() -> list:
     return sorted(scorers)
 
 
+@locked(lambda: SCORES_PATH)
 def get_season4_people() -> list:
     wb = openpyxl.load_workbook(SCORES_PATH, data_only=True)
     ws = wb["Sezon 4 - Oceny"]
@@ -313,11 +340,22 @@ _SHEET_NAMES = {
 }
 
 
+@locked(lambda: SCORES_PATH)
 def get_people_for_season(season: int) -> list[str]:
     wb = openpyxl.load_workbook(SCORES_PATH, data_only=True)
     ws = wb[_SHEET_NAMES[season]]
     header_row = _find_header_row(ws) if season == 3 else 1
     return list(_get_people_cols(ws, header_row).values())
+
+
+def _require_movie_row(ws, season: int, row_num: int, people_cols: dict):
+    start_row = {1: 3, 2: 6, 3: _find_header_row(ws) + 1, 4: 4}[season]
+    if row_num < start_row or row_num > ws.max_row:
+        raise ValueError("Movie row not found")
+    row = ws[row_num]
+    if not row[0].value or _is_formula(row[0].value) or not _is_movie_row(row, people_cols):
+        raise ValueError("Movie row not found")
+    return row
 
 
 @locked(lambda: SCORES_PATH)
@@ -327,10 +365,15 @@ def edit_score(season: int, row_num: int, person_canonical: str, score: Optional
     ws = wb[_SHEET_NAMES[season]]
     header_row = _find_header_row(ws) if season == 3 else 1
     people_cols = _get_people_cols(ws, header_row)
+    row = _require_movie_row(ws, season, row_num, people_cols)
 
     col = next((c for c, raw in people_cols.items() if normalize_name(raw) == person_canonical), None)
     if col is None:
         raise ValueError(f"Person '{person_canonical}' not found in season {season} sheet")
+
+    # Preserve a legacy film even when its final remaining score is removed.
+    metadata = {**_row_metadata(row), "type": "movie"}
+    row[0].comment = Comment(json.dumps(metadata, ensure_ascii=False), "Movie Night")
 
     light_fill = PatternFill(start_color=LIGHT_PURPLE, end_color=LIGHT_PURPLE, fill_type="solid")
     cell = ws.cell(row_num, col)
@@ -369,7 +412,7 @@ def delete_night(season: int, night_name: str):
         title = str(raw).strip()
 
         if has_categories:
-            if not _row_has_scores(row, people_cols):
+            if not _is_movie_row(row, people_cols):
                 if in_target:
                     break  # next night starts, stop
                 if title == night_name:
@@ -391,6 +434,8 @@ def delete_night(season: int, night_name: str):
 def delete_movie_row(season: int, row_num: int):
     wb = openpyxl.load_workbook(SCORES_PATH)
     ws = wb[_SHEET_NAMES[season]]
+    header_row = _find_header_row(ws) if season == 3 else 1
+    _require_movie_row(ws, season, row_num, _get_people_cols(ws, header_row))
     ws.delete_rows(row_num)
     wb.save(SCORES_PATH)
 
@@ -406,11 +451,12 @@ def add_person_to_scores(name: str) -> bool:
     wb = openpyxl.load_workbook(SCORES_PATH)
     ws = wb["Sezon 4 - Oceny"]
 
-    target = name.strip().lower()
+    from config import normalize_name
+    target = normalize_name(name)
     last_person_col = 2
     for cell in ws[1]:
         if cell.column >= 3 and cell.value and isinstance(cell.value, str):
-            if not _is_formula(cell.value) and cell.value.strip().lower() == target:
+            if not _is_formula(cell.value) and normalize_name(cell.value) == target:
                 return False
             last_person_col = cell.column
 
@@ -446,11 +492,14 @@ def _session_columns(ws) -> tuple[dict, int]:
     return people_cols, max_col
 
 
+@locked(lambda: SCORES_PATH)
 def save_session(
     movies: list,
     category: Optional[str],
     scores: dict,
     present_people: list,
+    movie_categories: dict | None = None,
+    hosts: list[str] | None = None,
 ):
     wb = openpyxl.load_workbook(SCORES_PATH)
     ws = wb["Sezon 4 - Oceny"]
@@ -462,10 +511,8 @@ def save_session(
     # Only people marked present get a score written. Without this a stale
     # score left in the payload for someone who went home would still land in
     # the sheet.
-    present: Optional[set] = None
-    if present_people:
-        from config import normalize_name
-        present = set(present_people) | {normalize_name(p) for p in present_people}
+    from config import normalize_name
+    present = {normalize_name(p) for p in present_people}
 
     # Find last used row
     last_row = ws.max_row
@@ -477,32 +524,37 @@ def save_session(
     light_fill = PatternFill(start_color=LIGHT_PURPLE, end_color=LIGHT_PURPLE, fill_type="solid")
     white_font = Font(color="FFFFFFFF")
 
-    if category:
-        for c in range(1, max_person_col + 1):
-            cell = ws.cell(next_row, c)
-            cell.fill = dark_fill
-            cell.font = white_font
-        ws.cell(next_row, 1).value = category
-        next_row += 1
+    # Every submission is a night, including one without a theme. Otherwise
+    # its films and attendance would be merged into the preceding night.
+    for c in range(1, max_person_col + 1):
+        cell = ws.cell(next_row, c)
+        cell.fill = dark_fill
+        cell.font = white_font
+    ws.cell(next_row, 1).value = category or "Bez tematu"
+    ws.cell(next_row, 1).comment = Comment(json.dumps({"type": "night", "hosts": hosts or []}, ensure_ascii=False), "Movie Night")
+    next_row += 1
 
     for movie_title in movies:
         movie_scores = scores.get(movie_title, {})
-        if present is not None:
-            movie_scores = {p: v for p, v in movie_scores.items() if p in present}
-        valid = [v for v in movie_scores.values() if v is not None]
+        movie_scores = {normalize_name(p): v for p, v in movie_scores.items() if normalize_name(p) in present}
+        movie_scores = {p: v for p, v in movie_scores.items() if p in people_cols}
+        # Aliases can address the same column; average exactly what is written.
+        column_scores = {people_cols[p]: v for p, v in movie_scores.items() if v is not None}
+        valid = list(column_scores.values())
         avg = round(sum(valid) / len(valid), 2) if valid else None
 
         for c in range(1, max_person_col + 1):
             ws.cell(next_row, c).fill = light_fill
 
         ws.cell(next_row, 1).value = movie_title
+        ws.cell(next_row, 1).comment = Comment(json.dumps({
+            "type": "movie", "category": (movie_categories or {}).get(movie_title, category),
+        }, ensure_ascii=False), "Movie Night")
         if avg is not None:
             ws.cell(next_row, 2).value = avg
 
-        for person, score in movie_scores.items():
-            col = people_cols.get(person)
-            if col and score is not None:
-                ws.cell(next_row, col).value = score
+        for col, score in column_scores.items():
+            ws.cell(next_row, col).value = score
 
         next_row += 1
 

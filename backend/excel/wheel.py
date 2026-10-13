@@ -57,6 +57,7 @@ def _get_structure(ws) -> tuple:
     return people_cols, trafione_col, category_col
 
 
+@locked(lambda: WHEEL_PATH)
 def get_wheel_data() -> dict:
     from config import load_config, normalize_name  # local import avoids circular at module level
     wb = _load_wb()
@@ -344,7 +345,9 @@ def reorder_history(ordered_row_indices: list):
             r = row[0].row
             cat_val = row[category_col - 1].value if category_col and category_col - 1 < len(row) else None
             entries_by_row[r] = (str(person_val).strip(), str(cat_val).strip() if cat_val else "")
-    ordered = [entries_by_row[r] for r in ordered_row_indices if r in entries_by_row]
+    if len(ordered_row_indices) != len(entries_by_row) or set(ordered_row_indices) != set(entries_by_row):
+        raise ValueError("Lista musi zawierać każdy wpis historii dokładnie raz. Odśwież dane.")
+    ordered = [entries_by_row[r] for r in ordered_row_indices]
     # Clear and rewrite in new order
     for r in range(2, ws.max_row + 1):
         ws.cell(r, trafione_col).value = None

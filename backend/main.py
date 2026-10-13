@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -37,9 +37,13 @@ for _candidate in [_here / "static", _here.parent / "frontend" / "dist"]:
 
 @app.get("/{full_path:path}")
 async def spa_fallback(full_path: str):
+    if full_path == "api" or full_path.startswith("api/"):
+        raise HTTPException(404, "Not found")
     if _static_dir:
-        target = _static_dir / full_path
+        target = (_static_dir / full_path).resolve()
+        if not target.is_relative_to(_static_dir.resolve()):
+            raise HTTPException(404, "Not found")
         if target.is_file():
             return FileResponse(str(target))
         return FileResponse(str(_static_dir / "index.html"))
-    return FileResponse("index.html")
+    raise HTTPException(404, "Frontend not built")

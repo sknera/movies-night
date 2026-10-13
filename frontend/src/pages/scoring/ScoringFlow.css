@@ -49,7 +49,7 @@
   align-self: flex-start;
   margin-top: 4px;
   color: var(--purple-light);
-  border-color: rgba(232,164,50,.3);
+  border-color: var(--border-dim);
 }
 
 .start-btn { width: 100%; }
@@ -103,7 +103,7 @@
   width: 8px; height: 8px;
   border-radius: 50%;
   background: var(--bg-card2);
-  border: 2px solid rgba(232,164,50,.3);
+  border: 2px solid var(--border-dim);
   transition: all .2s;
 }
 .mdot-active {
@@ -173,7 +173,7 @@
   width: 100%;
   padding: 5px 2px;
   border-radius: 5px;
-  border: 1px solid rgba(232,164,50,.2);
+  border: 1px solid var(--border-dim);
   background: var(--bg-card);
   color: var(--text-muted);
   font-size: 0.8rem;
@@ -183,12 +183,12 @@
   text-align: center;
 }
 .score-btn:hover {
-  border-color: rgba(232,164,50,.6);
+  border-color: var(--border-dim);
   color: var(--white);
   background: var(--bg-card2);
 }
 .score-btn-selected {
-  color: #fff !important;
+  /* Text colour follows the selected person background. */
   font-weight: 800;
   border-color: transparent;
 }
@@ -259,7 +259,7 @@
      obvious across the room on a phone. */
   text-decoration: line-through;
   text-decoration-thickness: 2px;
-  opacity: 0.65;
+  opacity: 1;
   transition: opacity 0.12s, box-shadow 0.12s;
 }
 
@@ -318,3 +318,8 @@
   color: var(--ink-muted);
   margin-top: 4px;
 }
+.setup-theme + .setup-theme {
+  border-top: 1px solid var(--purple-light);
+  padding-top: 24px;
+}
+.setup-theme-person { color: var(--text-muted); font-weight: 400; }

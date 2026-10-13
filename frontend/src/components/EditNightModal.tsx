@@ -1,3 +1,4 @@
+import { getErrorMessage } from '../utils/errors'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { adminEditScore, adminDeleteNight, adminDeleteMovieRow, getSeasonPeople } from '../api'
@@ -64,8 +65,8 @@ export default function EditNightModal({ nightName, season, movies, adminToken, 
     try {
       await adminDeleteMovieRow(season, m.row_num, adminToken)
       onSaved()
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Błąd usuwania wiersza')
+    } catch (e) {
+      setError(getErrorMessage(e, 'Błąd usuwania wiersza'))
       setConfirmDeleteRow(null)
     } finally {
       setDeletingRow(false)
@@ -78,8 +79,8 @@ export default function EditNightModal({ nightName, season, movies, adminToken, 
     try {
       await adminDeleteNight(season, nightName, adminToken)
       onSaved()
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Błąd usuwania')
+    } catch (e) {
+      setError(getErrorMessage(e, 'Błąd usuwania'))
       setConfirmDelete(false)
     } finally {
       setDeleting(false)
@@ -136,8 +137,8 @@ export default function EditNightModal({ nightName, season, movies, adminToken, 
         await adminEditScore(season, movie.row_num!, person, score, adminToken)
       }
       onSaved()
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Błąd zapisu')
+    } catch (e) {
+      setError(getErrorMessage(e, 'Błąd zapisu'))
     } finally {
       setSaving(false)
     }

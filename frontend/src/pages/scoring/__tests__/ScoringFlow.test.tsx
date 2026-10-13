@@ -40,14 +40,14 @@ describe('ScoringFlow setup', () => {
     await waitFor(() => expect(category).toHaveValue('Horrory'))
   })
 
-  it('falls back to the last spin when no category is set', async () => {
+  it('does not prefill an already watched category from spin history', async () => {
     vi.spyOn(api, 'getNextCategory').mockResolvedValue(null)
     vi.spyOn(api, 'getLastSpin').mockResolvedValue({
       spin: { person: 'kaja', category: 'Anime', row_index: 2 },
     })
     renderFlow()
     const category = await screen.findByPlaceholderText('Kategoria…')
-    await waitFor(() => expect(category).toHaveValue('Anime'))
+    await waitFor(() => expect(category).toHaveValue(''))
   })
 
   it('lists everyone as present by default', async () => {
@@ -290,5 +290,71 @@ describe('ScoringFlow draft recovery', () => {
     renderFlow()
     expect(await screen.findByPlaceholderText('Kategoria…')).toBeInTheDocument()
     expect(screen.queryByText(/niedokończone ocenianie/)).not.toBeInTheDocument()
+  })
+})
+
+
+describe('ScoringFlow two themes', () => {
+  beforeEach(() => {
+    stubApi()
+    vi.spyOn(api, 'getNextCategory').mockResolvedValue({
+      category: 'Kosmos + Anime', person: 'Xero + Kaja', mode: 'double_theme',
+      themes: [{ category: 'Kosmos', person: 'Xero' }, { category: 'Anime', person: 'Kaja' }],
+      hosts: ['Xero', 'Kaja'],
+    })
+  })
+
+  it('requires a film in both groups and preserves topics through scoring and saving', async () => {
+    const user = userEvent.setup()
+    const submit = vi.spyOn(api, 'submitSession').mockResolvedValue({ data: { ok: true } } as never)
+    renderFlow()
+    await user.type(await screen.findByRole('textbox', { name: 'Temat 1, film 1' }), 'Interstellar')
+    expect(screen.getByRole('button', { name: /^Start/ })).toBeDisabled()
+    await user.type(screen.getByRole('textbox', { name: 'Temat 2, film 1' }), 'Totoro')
+    await user.click(screen.getByRole('button', { name: /^Start/ }))
+    await screen.findByText('Interstellar')
+    expect(document.querySelector('.scoring-category')).toHaveTextContent('Kosmos')
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(DRAFT_KEY)!).movieCategories)
+      .toEqual({ Interstellar: 'Kosmos', Totoro: 'Anime' }))
+    await user.click(screen.getByRole('button', { name: 'Następny →' }))
+    expect(document.querySelector('.scoring-category')).toHaveTextContent('Anime')
+    await user.click(screen.getByRole('button', { name: '✓ Zapisz wyniki' }))
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({
+      movies: ['Interstellar', 'Totoro'], category: 'Kosmos + Anime',
+      movie_categories: { Interstellar: 'Kosmos', Totoro: 'Anime' },
+    })))
+  })
+
+  it('rejects duplicate titles across themes', async () => {
+    const user = userEvent.setup()
+    renderFlow()
+    await user.type(await screen.findByRole('textbox', { name: 'Temat 1, film 1' }), 'Film')
+    await user.type(screen.getByRole('textbox', { name: 'Temat 2, film 1' }), 'film')
+    expect(screen.getByRole('button', { name: /^Start/ })).toBeDisabled()
+    expect(screen.getByText(/Dwa razy ten sam film/)).toBeInTheDocument()
+  })
+
+  it('keeps the one-theme form for two film selectors', async () => {
+    vi.spyOn(api, 'getNextCategory').mockResolvedValue({
+      category: 'Kosmos', person: 'Xero + Kaja', mode: 'cohost', hosts: ['Xero', 'Kaja'],
+      themes: [{ category: 'Kosmos', person: 'Xero' }],
+    })
+    renderFlow()
+    expect(await screen.findByPlaceholderText('Kategoria…')).toHaveValue('Kosmos')
+    expect(screen.getAllByPlaceholderText(/^Film \d…$/)).toHaveLength(2)
+  })
+
+  it('recovers the topic of the second film from a draft', async () => {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      movies: ['Interstellar', 'Totoro'], category: 'Kosmos + Anime', people: ['Xero'],
+      movieCategories: { Interstellar: 'Kosmos', Totoro: 'Anime' },
+      scores: { Interstellar: { Xero: 8 }, Totoro: {} }, movieIdx: 1,
+    }))
+    const user = userEvent.setup()
+    renderFlow()
+    await user.click(await screen.findByRole('button', { name: 'Kontynuuj' }))
+    await screen.findByText('oceniło: 0 / 1')
+    expect(document.querySelector('.scoring-category')).toHaveTextContent('Anime')
+    expect(document.querySelector('.movie-title-big')).toHaveTextContent('Totoro')
   })
 })

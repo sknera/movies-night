@@ -1,4 +1,6 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useAdminSession } from '../../hooks/useAdminSession'
+import { contrastText, readableColor } from '../../utils/contrast'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { getNights, getStats } from '../../api'
@@ -77,12 +79,15 @@ function NightDetail({
       {host && (
         <div className="nd-host">
           zaproponowane przez{' '}
+          {host.split(' + ').map((person, i) => <span key={person}>
+          {i > 0 && ' i '}
           <strong
             className="nd-person-link"
-            onClick={e => { e.stopPropagation(); onPersonClick(host) }}
+            onClick={e => { e.stopPropagation(); onPersonClick(person) }}
           >
-            {host}
+            {person}
           </strong>
+          </span>)}
         </div>
       )}
       {movies.map((m, mi) => {
@@ -106,6 +111,9 @@ function NightDetail({
                 śr. {m.average !== null ? m.average.toFixed(1) : '—'}
               </span>
             </div>
+            {new Set(movies.map(movie => movie.category)).size > 1 && m.category && (
+              <div className="nd-host">Temat: {m.category}</div>
+            )}
             {allPeople.length > 0 && (
               <div className="nd-scores">
                 {allPeople.map(person => {
@@ -145,7 +153,7 @@ export default function HistoryPage() {
   const [selectedPerson, setSelectedPerson] = useState<PersonStat | null>(null)
   const statsCache = useRef<PersonStat[] | null>(null)
 
-  const adminToken = sessionStorage.getItem('adminToken')
+  const adminToken = useAdminSession()
 
   const handlePersonClick = async (name: string) => {
     try {
@@ -161,14 +169,15 @@ export default function HistoryPage() {
     }
   }
 
-  const loadNights = () => {
-    setLoading(true)
+  const [loadError, setLoadError] = useState('')
+  const loadNights = useCallback(() => {
     getNights()
-      .then(data => setNights(data))
+      .then(data => { setNights(data); setLoadError('') })
+      .catch(() => setLoadError('Nie udało się pobrać historii.'))
       .finally(() => setLoading(false))
-  }
+  }, [])
 
-  useEffect(() => { loadNights() }, [])
+  useEffect(() => { loadNights() }, [loadNights])
 
   const { bestSet, worstSet, controversySet } = useMemo(() => computeBadges(nights), [nights])
 
@@ -184,6 +193,7 @@ export default function HistoryPage() {
 
   return (
     <div className="history-page">
+      {loadError && <div className="error-msg" role="alert">{loadError}<button className="btn" onClick={loadNights}>Spróbuj ponownie</button></div>}
       <div className="page-header">
         <button className="back-btn" onClick={() => nav('/')}>← Wróć</button>
         <h1 className="page-title">Historia nocy 🎬</h1>
@@ -212,7 +222,7 @@ export default function HistoryPage() {
             return (
               <div key={season} className="history-season-col">
                 <div className="season-col-header" style={{ borderBottomColor: color }}>
-                  <span className="season-col-title" style={{ color }}>{name}</span>
+                  <span className="season-col-title" style={{ color: readableColor(color) }}>{name}</span>
                   <span className="season-col-meta">
                     {seasonNights.length} nocy · {seasonNights.reduce((s, n) => s + n.movie_count, 0)} filmów
                   </span>
@@ -244,15 +254,18 @@ export default function HistoryPage() {
                                 {peopleCount} {peopleCount === 1 ? 'osoba' : peopleCount < 5 ? 'osoby' : 'osób'}
                               </div>
                             )}
-                            {adminToken && (
+                            <span className="admin-action" onClick={e => e.stopPropagation()}>
                               <button
                                 className="night-edit-btn"
-                                title="Edytuj oceny"
+                                disabled={!adminToken}
+                                title={adminToken ? "Edytuj oceny" : "Tylko dla administratora"}
+                                aria-label="Edytuj oceny"
                                 onClick={e => { e.stopPropagation(); setEditingNight(night) }}
                               >
                                 ✏
                               </button>
-                            )}
+                              {!adminToken && <span className="admin-only-note">Tylko dla administratora</span>}
+                            </span>
                             <span className="night-expand-icon">{isExpanded ? '▲' : '▼'}</span>
                           </div>
                           {night.host && (
@@ -266,7 +279,7 @@ export default function HistoryPage() {
                                   <span
                                     key={mi}
                                     className={`night-avg-badge ${bestSet.has(badgeKey) ? 'badge-best' : ''} ${worstSet.has(badgeKey) ? 'badge-worst' : ''} ${controversySet.has(badgeKey) ? 'badge-controversy' : ''}`}
-                                    style={{ background: avgColor(m.average) }}
+                                    style={{ background: avgColor(m.average), color: contrastText(avgColor(m.average)) }}
                                     title={`${m.title}${bestSet.has(badgeKey) ? ' 🏆' : ''}${worstSet.has(badgeKey) ? ' 💀' : ''}${controversySet.has(badgeKey) ? ' 🔥' : ''}`}
                                   >
                                     {m.average.toFixed(1)}
@@ -306,7 +319,7 @@ export default function HistoryPage() {
           <MovieDetailModal
             title={selectedMovie.movie.title}
             season={selectedMovie.night.season}
-            category={selectedMovie.night.name}
+            category={selectedMovie.movie.category ?? selectedMovie.night.name}
             host={selectedMovie.night.host}
             average={selectedMovie.movie.average}
             scores={selectedMovie.movie.scores ?? {}}

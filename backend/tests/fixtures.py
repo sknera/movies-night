@@ -96,6 +96,8 @@ def build_spread(path: Path):
 
 def build_config(path: Path):
     config = {
+        # Exercise the stricter selectable mode in the existing regression suite.
+        "draw_initial_penalty": 1.0,
         "admin_hash": bcrypt.hashpw(ADMIN_PASSWORD.encode(), bcrypt.gensalt()).decode(),
         "hidden_people": ["Stary"],
         "name_map": {

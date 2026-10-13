@@ -69,10 +69,13 @@ def test_new_person_scores_land_in_the_sheet(client):
     assert night["movies"][0]["scores"]["Zosia"] == 8.0
 
 
-def test_adding_a_hidden_person_brings_them_back(client):
+def test_public_add_cannot_restore_hidden_person(client, data_dir):
     assert "Stary" not in client.get("/api/scores/people").json()
-    client.post("/api/wheel/person", json={"name": "Stary"})
-    assert "Stary" in client.get("/api/scores/people").json()
+    before = {p.name: p.read_bytes() for p in data_dir.iterdir() if p.suffix in ('.json', '.xlsx')}
+    for name in ('Stary', 'stary', ' STARY '):
+        assert client.post("/api/wheel/person", json={"name": name}).status_code == 403
+    assert "Stary" not in client.get("/api/scores/people").json()
+    assert before == {p.name: p.read_bytes() for p in data_dir.iterdir() if p.suffix in ('.json', '.xlsx')}
 
 
 def test_admin_add_also_unhides(client, admin_token):
@@ -90,8 +93,12 @@ def test_blank_name_is_rejected(client):
 def test_resurface_lists_people_who_left_the_wheel(client, admin_token):
     client.put("/api/admin/people/hide", json={"name": "Kaja"},
                headers={"authorization": admin_token})
-    names = [c["name"] for c in client.get("/api/wheel/candidates").json()]
+    headers = {"authorization": admin_token}
+    assert client.get("/api/wheel/candidates").status_code == 401
+    assert client.post("/api/wheel/resurface", json={"name": "Kaja"}).status_code == 401
+    assert client.post("/api/wheel/resurface", json={"name": "Kaja"}, headers={"authorization": "invalid"}).status_code == 401
+    names = [c["name"] for c in client.get("/api/wheel/candidates", headers=headers).json()]
     assert "Kaja" in names
 
-    assert client.post("/api/wheel/resurface", json={"name": "Kaja"}).status_code == 200
+    assert client.post("/api/wheel/resurface", json={"name": "Kaja"}, headers=headers).status_code == 200
     assert "Kaja" in client.get("/api/scores/people").json()

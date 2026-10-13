@@ -131,7 +131,7 @@
 }
 .night-name-emoji {
   font-size: 0.82rem;
-  opacity: 0.55;
+  opacity: 1;
   flex-shrink: 0;
 }
 .night-count {
@@ -147,7 +147,7 @@
   font-size: 0.62rem;
   white-space: nowrap;
   flex-shrink: 0;
-  opacity: 0.6;
+  opacity: 1;
 }
 .night-host {
   width: 100%;
@@ -168,7 +168,7 @@
   font-weight: 400;
   padding: 1px 4px;
   line-height: 1.5;
-  opacity: 0.9;
+  opacity: 1;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -184,17 +184,17 @@
   padding: 2px 4px;
   line-height: 1;
   flex-shrink: 0;
-  opacity: 0.3;
+  opacity: 1;
   transition: opacity 0.12s;
 }
-.night-card:hover .night-edit-btn { opacity: 0.7; }
+.night-card:hover .night-edit-btn { opacity: 1; }
 .night-edit-btn:hover { opacity: 1 !important; color: var(--red); }
 
 .night-expand-icon {
   color: var(--ink-muted);
   font-size: 0.58rem;
   flex-shrink: 0;
-  opacity: 0.4;
+  opacity: 1;
 }
 
 /* ── Night detail ────────────────────────────── */
@@ -209,7 +209,7 @@
 }
 .nd-host strong { color: var(--red); font-weight: 700; }
 .nd-person-link { cursor: pointer; transition: opacity 0.12s; }
-.nd-person-link:hover { opacity: 0.65; }
+.nd-person-link:hover { opacity: 1; }
 
 .night-detail {
   background: var(--bg);
@@ -273,7 +273,7 @@
 .nd-score-chip-clickable:hover .nd-score-person,
 .nd-score-chip-clickable:hover .nd-score-val { color: var(--bg-card); }
 
-.nd-score-missing { opacity: 0.3; }
+.nd-score-missing { opacity: 1; }
 .nd-score-person {
   font-family: var(--font-body);
   color: var(--ink-muted);

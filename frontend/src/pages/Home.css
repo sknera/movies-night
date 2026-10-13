@@ -97,7 +97,7 @@
   font-family: var(--font-mono);
   font-size: 0.65rem;
   letter-spacing: 0.1em;
-  color: rgba(255,255,255,.5);
+  color: rgba(255,255,255,.75);
   text-transform: uppercase;
   margin-bottom: 5px;
 }
@@ -110,7 +110,7 @@
 }
 
 .klaps-meta-val-highlight {
-  color: var(--red);
+  color: #ff8796;
   font-weight: 700;
 }
 
@@ -149,7 +149,7 @@
 .klaps-row-num {
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  color: rgba(255,255,255,.35);
+  color: rgba(255,255,255,.75);
   letter-spacing: 0.04em;
   flex-shrink: 0;
   width: 24px;
@@ -168,7 +168,7 @@
 .klaps-row-sub {
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  color: rgba(255,255,255,.5);
+  color: rgba(255,255,255,.75);
   letter-spacing: 0.01em;
   flex: 1;
 }
@@ -176,8 +176,8 @@
 .klaps-row-arrow {
   font-family: var(--font-mono);
   font-size: 1.1rem;
-  color: var(--red);
-  opacity: 0.45;
+  color: #ff8796;
+  opacity: 1;
   flex-shrink: 0;
   transition: opacity 0.12s, transform 0.12s;
 }
@@ -238,7 +238,7 @@
   right: 0;
   background: transparent;
   border: none;
-  color: var(--border-dim);
+  color: var(--ink-muted);
   font-size: 1rem;
   cursor: pointer;
   padding: 6px;

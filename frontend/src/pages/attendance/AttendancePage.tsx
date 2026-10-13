@@ -1,3 +1,4 @@
+import { readableColor } from '../../utils/contrast'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getAttendance } from '../../api'
@@ -53,7 +54,7 @@ function Heatmap({ data }: { data: AttendanceData }) {
             const total = p.attendance.filter(Boolean).length
             return (
               <div key={p.name} className="heatmap-row">
-                <div className="heatmap-name" style={{ width: NAME_W, color: p.color }}>
+                <div className="heatmap-name" style={{ width: NAME_W, color: readableColor(p.color) }}>
                   {p.name}
                 </div>
                 <div className="heatmap-cells">
@@ -61,7 +62,7 @@ function Heatmap({ data }: { data: AttendanceData }) {
                     <div
                       key={i}
                       className={`heatmap-cell ${attended ? 'att' : 'miss'}`}
-                      style={attended ? { background: p.color } : undefined}
+                      style={attended ? { background: readableColor(p.color) } : undefined}
                       onMouseEnter={e => {
                         const rect = (e.target as HTMLElement).getBoundingClientRect()
                         setTooltip({
@@ -190,7 +191,7 @@ function LineChart({ data }: { data: AttendanceData }) {
                 key={p.name}
                 d={d}
                 fill="none"
-                stroke={p.color}
+                stroke={readableColor(p.color)}
                 strokeWidth={isHov ? 2.5 : 1.5}
                 opacity={hovered && !isHov ? 0.15 : 1}
                 style={{ transition: 'opacity 0.15s, stroke-width 0.1s' }}
@@ -219,7 +220,7 @@ function LineChart({ data }: { data: AttendanceData }) {
             return (
               <circle
                 cx={px(pt.x)} cy={py(pt.y)} r={4}
-                fill={s.person.color} stroke="var(--bg-card)" strokeWidth={1.5}
+                fill={readableColor(s.person.color)} stroke="var(--bg-card)" strokeWidth={1.5}
               />
             )
           })()}
@@ -242,7 +243,7 @@ function LineChart({ data }: { data: AttendanceData }) {
               onMouseEnter={() => setHovered(p.name)}
               onMouseLeave={() => setHovered(null)}
             >
-              <span className="lc-dot" style={{ background: p.color }} />
+              <span className="lc-dot" style={{ background: readableColor(p.color) }} />
               <span className="lc-leg-name">{p.name}</span>
               <span className="lc-leg-count">{total}</span>
             </div>
@@ -276,7 +277,7 @@ function DropoutPanel({ data }: { data: AttendanceData }) {
       const lastIdx = p.attendance.reduceRight((found, v, i) => found === -1 && v ? i : found, -1)
       const recentCount = p.attendance.slice(recentStart).filter(Boolean).length
       const total = p.attendance.filter(Boolean).length
-      return { name: p.name, color: p.color, lastIdx, recentCount, total }
+      return { name: p.name, color: readableColor(p.color), lastIdx, recentCount, total }
     })
     .filter(e => e.total >= 3)
     .sort((a, b) => b.lastIdx - a.lastIdx)
@@ -284,7 +285,7 @@ function DropoutPanel({ data }: { data: AttendanceData }) {
   const gone = entries.filter(e => e.recentCount === 0 && e.lastIdx < n - RECENT)
   const active = entries.filter(e => e.recentCount >= 1)
 
-  const Block = ({ title, items, dim }: {
+  const renderBlock = ({ title, items, dim }: {
     title: string
     items: typeof entries
     dim?: boolean
@@ -292,9 +293,9 @@ function DropoutPanel({ data }: { data: AttendanceData }) {
     <div className="dropout-block">
       <div className="dropout-block-title">{title}</div>
       {items.map(e => (
-        <div key={e.name} className="dropout-row" style={{ opacity: dim ? 0.55 : 1 }}>
-          <span className="dropout-dot" style={{ background: e.color }} />
-          <span className="dropout-name" style={{ color: e.color }}>{e.name}</span>
+        <div key={e.name} className="dropout-row" style={dim ? { borderLeft: '2px dashed var(--border-dim)', paddingLeft: 8 } : undefined}>
+          <span className="dropout-dot" style={{ background: readableColor(e.color) }} />
+          <span className="dropout-name" style={{ color: readableColor(e.color) }}>{e.name}</span>
           <span className="dropout-stat">{e.recentCount}/{RECENT} ostatnich nocy</span>
           <span className="dropout-total">· {e.total} łącznie</span>
         </div>
@@ -306,8 +307,8 @@ function DropoutPanel({ data }: { data: AttendanceData }) {
     <div className="att-section">
       <div className="att-section-title">Ostatnie {RECENT} nocy</div>
       <div className="dropout-grid">
-        <Block title="✓ Byli" items={active} />
-        <Block title="✗ Nie było" items={gone} dim />
+        {renderBlock({ title: '✓ Byli', items: active })}
+        {renderBlock({ title: '✗ Nie było', items: gone, dim: true })}
       </div>
     </div>
   )

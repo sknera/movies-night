@@ -56,7 +56,7 @@
   font-family: var(--font-mono);
   font-size: 0.62rem;
   color: var(--ink-muted);
-  opacity: 0.7;
+  opacity: 1;
 }
 .mdm-close {
   background: none;
@@ -116,7 +116,7 @@
   text-align: center;
   flex: 1;
   color: var(--ink-muted);
-  opacity: 0.6;
+  opacity: 1;
 }
 
 .mdm-scores {
@@ -163,7 +163,7 @@
   color: var(--ink-muted);
   text-align: center;
   padding: 14px 18px;
-  opacity: 0.5;
+  opacity: 1;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }

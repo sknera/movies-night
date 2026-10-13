@@ -11,13 +11,16 @@ interface Props {
   spinning: boolean
   targetIndex: number | null
   onAnimationEnd: () => void
+  emptyText?: string
 }
 
-export default function CasinoWheel({ items, spinning, targetIndex, onAnimationEnd }: Props) {
+export default function CasinoWheel({ items, spinning, targetIndex, onAnimationEnd, emptyText }: Props) {
   const listRef = useRef<HTMLDivElement>(null)
   const posRef = useRef(0)
   const spinningRef = useRef(false)
   const idleRafRef = useRef(0)
+  const finishRef = useRef(onAnimationEnd)
+  useEffect(() => { finishRef.current = onAnimationEnd }, [onAnimationEnd])
 
   const N = items.length
   const allItems = N > 0 ? Array.from({ length: REPEATS }, () => items).flat() : []
@@ -78,8 +81,22 @@ export default function CasinoWheel({ items, spinning, targetIndex, onAnimationE
     const startTime = performance.now()
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 4)
 
-    let rafId: number
+    let rafId = 0
+    let finished = false
+    const finish = () => {
+      if (finished) return
+      finished = true
+      cancelAnimationFrame(rafId)
+      spinningRef.current = false
+      posRef.current = endY
+      if (listRef.current) listRef.current.style.transform = `translateY(${endY}px)`
+      finishRef.current()
+    }
+    // Background tabs and embedded previews may stop animation frames.
+    // A saved result must still become accessible when the spin time is up.
+    const fallback = setTimeout(finish, duration + 100)
     const animate = (now: number) => {
+      if (finished) return
       const t = Math.min(1, (now - startTime) / duration)
       posRef.current = startY + (endY - startY) * easeOut(t)
       if (listRef.current) listRef.current.style.transform = `translateY(${posRef.current}px)`
@@ -87,21 +104,26 @@ export default function CasinoWheel({ items, spinning, targetIndex, onAnimationE
       if (t < 1) {
         rafId = requestAnimationFrame(animate)
       } else {
-        spinningRef.current = false
-        onAnimationEnd()
+        clearTimeout(fallback)
+        finish()
       }
     }
 
     rafId = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(rafId)
-  }, [spinning, targetIndex])
+    return () => {
+      finished = true
+      cancelAnimationFrame(rafId)
+      clearTimeout(fallback)
+      spinningRef.current = false
+    }
+  }, [spinning, targetIndex, N])
 
   if (N === 0) {
     return (
       <div className="casino-wheel-frame">
         <div className="casino-cap"><div className="casino-cap-dot" /></div>
         <div className="casino-wheel casino-wheel-empty">
-          <span>Brak kategorii — dodaj przez "+ Kategorie"</span>
+          <span>{emptyText ?? 'Brak kategorii — dodaj przez "+ Kategorie"'}</span>
         </div>
         <div className="casino-cap casino-cap-bottom"><div className="casino-cap-dot" /></div>
       </div>

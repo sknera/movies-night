@@ -1,6 +1,14 @@
 import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api' })
+api.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 401) {
+    window.dispatchEvent(new CustomEvent('admin-session-expired', {
+      detail: error.config?.headers?.Authorization ?? error.config?.headers?.authorization,
+    }))
+  }
+  return Promise.reject(error)
+})
 
 // ─── Scores ────────────────────────────────────────────────────────────────
 
@@ -29,12 +37,14 @@ export interface SessionPayload {
   category?: string
   present_people: string[]
   scores: Record<string, Record<string, number | null>>
+  movie_categories?: Record<string, string>
 }
 export const submitSession = (payload: SessionPayload, token?: string) =>
   api.post('/scores/session', payload, token ? { headers: { authorization: token } } : undefined)
 
 export interface NightMovie {
   title: string
+  category?: string | null
   average: number | null
   scores?: Record<string, number>
   row_num?: number
@@ -61,6 +71,8 @@ export interface WheelEntry {
   weight: number
   probability: number
   color: string
+  nights_ago?: number | null
+  recency_multiplier?: number
 }
 
 export interface HistoryEntry {
@@ -81,7 +93,26 @@ export interface PersonMovie {
 export interface NextCategory {
   category: string
   person: string
+  themes?: { category: string; person: string }[]
+  hosts?: string[]
+  mode?: DrawMode
+  pending?: boolean
 }
+
+export type DrawMode = 'single' | 'double_theme' | 'cohost'
+export interface DrawResult {
+  id: string
+  mode: DrawMode
+  picks: { person_key: string; person: string; category: string }[]
+  hosts: string[]
+  pending: boolean
+  eligible_people: string[]
+  person_weights?: Record<string, number>
+}
+export const startDraw = (mode: DrawMode) =>
+  api.post<DrawResult>('/wheel/draw', { mode }).then(r => r.data)
+export const finishDraw = (id: string) =>
+  api.post<DrawResult>(`/wheel/draw/${encodeURIComponent(id)}/next`).then(r => r.data)
 
 export interface ForcedSpin {
   person_key: string
@@ -93,6 +124,8 @@ export interface WheelData {
   history: HistoryEntry[]
   next_category: NextCategory | null
   forced_spin: ForcedSpin | null
+  active_draw?: DrawResult | null
+  eligible_people?: string[]
 }
 
 export const getWheelData = () => api.get<WheelData>('/wheel/data').then(r => r.data)
@@ -115,16 +148,6 @@ export interface AddPersonResult {
 export const addPerson = (name: string) =>
   api.post<AddPersonResult>('/wheel/person', { name }).then(r => r.data)
 
-export interface WheelCandidate {
-  name: string
-  hidden: boolean
-}
-
-export const getWheelCandidates = () =>
-  api.get<WheelCandidate[]>('/wheel/candidates').then(r => r.data)
-
-export const resurfacePerson = (name: string) =>
-  api.post('/wheel/resurface', { name })
 export const recordSpin = (person_key: string, category: string) =>
   api.post('/wheel/spin', { person_key, category })
 
@@ -195,13 +218,14 @@ export const adminSetNextCategory = (person_key: string, category: string, token
 export const adminClearNextCategory = (token: string) =>
   api.delete('/admin/next-category', { headers: { authorization: token } })
 
-export const deleteLastSpin = () =>
+export const deleteLastSpin = (drawId?: string) =>
   api.delete<{
     ok: boolean
     removed: { person: string; category: string }
     /** False when the category was still on the wheel and needed no restoring. */
     category_restored: boolean
-  }>('/wheel/last-spin').then(r => r.data)
+    removed_categories?: string[]
+  }>('/wheel/last-spin', { params: { draw_id: drawId } }).then(r => r.data)
 
 export const getSeasonPeople = (season: number) =>
   api.get<string[]>(`/scores/season-people/${season}`).then(r => r.data)
@@ -230,3 +254,11 @@ export interface AttendanceNight { index: number; name: string; season: number }
 export interface AttendancePerson { name: string; color: string; attendance: boolean[] }
 export interface AttendanceData { nights: AttendanceNight[]; people: AttendancePerson[] }
 export const getAttendance = () => api.get<AttendanceData>('/scores/attendance').then(r => r.data)
+
+
+export type DrawPenalty = 0 | 0.5 | 1
+export interface DrawSettings { initial_penalty: DrawPenalty; locked: boolean }
+export const adminGetDrawSettings = (token: string) =>
+  api.get<DrawSettings>('/admin/draw-settings', { headers: { authorization: token } }).then(r => r.data)
+export const adminSetDrawSettings = (initial_penalty: DrawPenalty, token: string) =>
+  api.put<DrawSettings>('/admin/draw-settings', { initial_penalty }, { headers: { authorization: token } }).then(r => r.data)

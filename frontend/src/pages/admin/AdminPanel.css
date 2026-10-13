@@ -68,7 +68,7 @@
   align-items: center;
   gap: 5px;
   background: var(--bg-card2);
-  border: 1px solid rgba(232,164,50,.3);
+  border: 1px solid var(--border-dim);
   border-radius: 999px;
   padding: 3px 8px 3px 10px;
   font-size: 0.8rem;
@@ -107,7 +107,7 @@
   cursor: grab;
   font-size: 1rem;
   flex-shrink: 0;
-  opacity: 0.5;
+  opacity: 1;
   padding: 0 2px;
   transition: opacity 0.15s;
 }
@@ -137,7 +137,7 @@
 
 .sh-input {
   background: rgba(232,164,50,.12);
-  border: 1px solid rgba(232,164,50,.35);
+  border: 1px solid var(--border-dim);
   border-radius: 5px;
   color: var(--white);
   font-size: 0.82rem;
@@ -222,7 +222,7 @@
   flex: 1;
   min-width: 160px;
   background: rgba(232,164,50,.08);
-  border: 1px solid rgba(232,164,50,.3);
+  border: 1px solid var(--border-dim);
   border-radius: 8px;
   color: var(--white);
   font-size: 0.875rem;
@@ -230,8 +230,8 @@
   cursor: pointer;
   appearance: auto;
 }
-.next-winner-form select:disabled { opacity: 0.4; cursor: not-allowed; }
-.next-winner-form select option { background: #1a1025; color: var(--white); }
+.next-winner-form select:disabled { opacity: 1; cursor: not-allowed; }
+.next-winner-form select option { background: var(--bg-card); color: var(--white); }
 
 .action-flash {
   background: rgba(74,222,128,.1);
@@ -253,8 +253,8 @@
   z-index: 100;
 }
 .sim-modal {
-  background: #1a1025;
-  border: 1px solid rgba(255,255,255,.12);
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
   border-radius: 14px;
   width: min(480px, 92vw);
   max-height: 80vh;
@@ -269,7 +269,7 @@
   padding: 16px 20px;
   font-weight: 600;
   font-size: 1rem;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid var(--border-dim);
 }
 .sim-list {
   overflow-y: auto;
@@ -282,24 +282,24 @@
   align-items: center;
   gap: 10px;
   padding: 8px 20px;
-  border-bottom: 1px solid rgba(255,255,255,.05);
+  border-bottom: 1px solid var(--border-dim);
 }
 .sim-row:last-child { border-bottom: none; }
 .sim-num {
   width: 24px;
   text-align: right;
-  color: rgba(255,255,255,.35);
+  color: var(--ink-muted);
   font-size: 0.8rem;
   flex-shrink: 0;
 }
 .sim-person {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--red);
   min-width: 90px;
   flex-shrink: 0;
 }
 .sim-cat {
-  color: rgba(255,255,255,.85);
+  color: var(--ink);
   font-size: 0.9rem;
 }
 
@@ -310,7 +310,7 @@
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: rgba(255,255,255,.35);
+  color: var(--ink-muted);
   margin-bottom: 4px;
 }
 .night-delete-row {
@@ -319,8 +319,13 @@
   gap: 10px;
   padding: 6px 10px;
   border-radius: 8px;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.06);
+  background: var(--bg-card2);
+  border: 1px solid var(--border-dim);
 }
 .night-delete-name { flex: 1; font-size: 0.875rem; }
-.night-delete-count { font-size: 0.75rem; color: rgba(255,255,255,.4); flex-shrink: 0; }
+.night-delete-count { font-size: 0.75rem; color: var(--ink-muted); flex-shrink: 0; }
+
+.draw-penalty-options { display: grid; gap: 1rem; margin: 1rem 0; }
+.draw-penalty-options label { display: flex; align-items: baseline; gap: .75rem; }
+.draw-penalty-options input { width: auto; }
+.draw-penalty-options small { display: block; color: var(--ink-muted); margin-top: .25rem; }
