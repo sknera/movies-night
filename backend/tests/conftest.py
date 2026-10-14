@@ -46,6 +46,11 @@ def admin_token(client):
     return r.json()["token"]
 
 
+@pytest.fixture
+def admin_headers(admin_token):
+    return {"authorization": admin_token}
+
+
 def wheel_entry(client, name: str) -> dict:
     """The /wheel/data entry for a display name."""
     entries = client.get("/api/wheel/data").json()["entries"]

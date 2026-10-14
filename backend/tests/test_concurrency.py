@@ -24,11 +24,11 @@ def test_parallel_category_adds_all_survive(client):
     assert not missing, f"lost writes: {missing}"
 
 
-def test_parallel_person_adds_all_survive(client):
+def test_parallel_person_adds_all_survive(client, admin_headers):
     names = [f"Osoba{i}" for i in range(6)]
 
     def add(name):
-        return client.post("/api/wheel/person", json={"name": name}).status_code
+        return client.post("/api/wheel/person", json={"name": name}, headers=admin_headers).status_code
 
     with ThreadPoolExecutor(max_workers=6) as pool:
         assert set(pool.map(add, names)) == {200}
@@ -40,11 +40,11 @@ def test_parallel_person_adds_all_survive(client):
         assert people.count(name) == 1
 
 
-def test_config_stays_valid_json_under_parallel_writes(client, data_dir):
+def test_config_stays_valid_json_under_parallel_writes(client, data_dir, admin_headers):
     import json
 
     def touch(i):
-        return client.post("/api/wheel/person", json={"name": f"Ktos{i}"}).status_code
+        return client.post("/api/wheel/person", json={"name": f"Ktos{i}"}, headers=admin_headers).status_code
 
     with ThreadPoolExecutor(max_workers=6) as pool:
         list(pool.map(touch, range(6)))

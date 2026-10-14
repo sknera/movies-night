@@ -27,9 +27,18 @@ function wheelData(entries: WheelEntry[]): WheelData {
   return { entries, history: [], next_category: null, forced_spin: null }
 }
 
+/** Answers the inline admin prompt that guards writing to the workbooks. */
+async function unlockAdmin(user: ReturnType<typeof userEvent.setup>) {
+  vi.spyOn(api, 'adminGetPeople').mockResolvedValue([])
+  await user.type(screen.getByLabelText('Hasło administratora'), 'tajne')
+  await user.click(screen.getByRole('button', { name: 'Potwierdź' }))
+}
+
 describe('AddCategoriesView', () => {
   beforeEach(() => {
+    sessionStorage.clear()
     vi.spyOn(api, 'getWheelData').mockResolvedValue(wheelData([entry()]))
+    vi.spyOn(api, 'adminLogin').mockResolvedValue({ token: 'tok' })
   })
 
   it('stays on the categories grid after adding a person', async () => {
@@ -48,6 +57,7 @@ describe('AddCategoriesView', () => {
 
     await user.type(screen.getByPlaceholderText('Imię nowej osoby…'), 'Zosia')
     await user.click(screen.getByRole('button', { name: 'Dodaj' }))
+    await unlockAdmin(user)
 
     // The new person's card is here, on the same screen...
     expect(await screen.findByRole('button', { name: /Zosia/ })).toBeInTheDocument()
@@ -73,6 +83,7 @@ describe('AddCategoriesView', () => {
 
     await user.type(screen.getByPlaceholderText('Imię nowej osoby…'), 'Zosia')
     await user.click(screen.getByRole('button', { name: 'Dodaj' }))
+    await unlockAdmin(user)
     await screen.findByRole('button', { name: /Zosia/ })
 
     const boxes = await screen.findAllByPlaceholderText('Nowa kategoria…')

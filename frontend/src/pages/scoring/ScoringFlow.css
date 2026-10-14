@@ -280,9 +280,10 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  max-width: 360px;
+  flex-wrap: wrap;
+  max-width: 560px;
 }
-.setup-add-person input { flex: 1; }
+.setup-add-person input { flex: 1; min-width: 160px; }
 
 .setup-warning {
   margin-top: 8px;
@@ -323,3 +324,34 @@
   padding-top: 24px;
 }
 .setup-theme-person { color: var(--text-muted); font-weight: 400; }
+
+/* ── Ukryte osoby (przywracanie) ──────────────── */
+.hidden-people {
+  border: 2px solid var(--ink);
+  background: var(--bg-card);
+  padding: 10px 12px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hidden-people-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.hidden-people-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hidden-people-empty {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
