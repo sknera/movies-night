@@ -14,7 +14,7 @@ from excel.locking import locked
 from excel.scores import get_last_night_people
 from drawing import recent_hosts, recency
 from config import (
-    get_hidden_people, normalize_name, get_person_color, load_config, save_config,
+    get_hidden_people, get_blocked_people, normalize_name, get_person_color, load_config, save_config,
     ensure_person_color,
     CONFIG_PATH,
 )
@@ -23,14 +23,14 @@ router = APIRouter()
 
 def _compute_weights(raw_data: dict, nights: list[set[str]] | None = None) -> list:
     categories = raw_data["categories"]
-    hidden = get_hidden_people()
+    blocked = get_blocked_people()
     nights = recent_hosts(raw_data) if nights is None else nights
 
     # Merge columns that share the same display name (handles duplicate spreadsheet columns)
     merged: dict[str, dict] = {}
     for key, cats in categories.items():
         display = normalize_name(key)
-        if display in hidden:
+        if display in blocked:
             continue
         if display not in merged:
             merged[display] = {
@@ -166,13 +166,14 @@ def _ensure_person(name: str, *, allow_restore: bool = False) -> dict:
     and is not hidden. Safe to call repeatedly."""
     from excel.scores import add_person_to_scores
     name = normalize_name(name)
-    if not allow_restore and name in get_hidden_people():
+    if not allow_restore and name in set(get_hidden_people()) | set(get_blocked_people()):
         raise HTTPException(403, "Tę osobę może przywrócić tylko administrator.")
     created_scores = add_person_to_scores(name)
     created_wheel = add_person_to_wheel(name)
     config = load_config()
     config.setdefault("name_map", {})[name.lower()] = name
     config["hidden_people"] = [p for p in config.get("hidden_people", []) if p != name]
+    config["blocked_people"] = [p for p in config.get("blocked_people", []) if p != name]
     save_config(config)
     # A new person with no colour renders in the same default purple as every
     # other new person, which makes the scoring columns unreadable.
@@ -202,25 +203,33 @@ def add_person_public(payload: AddPersonPayload, authorization: str | None = Hea
 
 @router.get("/candidates")
 def list_candidates(authorization: str | None = Header(default=None)):
-    """People known from any season (or explicitly hidden) who are not currently
-    shown on the wheel -- the pool for 'dodaj do czesto pojawiajacych sie osob'."""
+    """Everyone who can be put back on tonight's list.
+
+    That is the hidden (off the list, still playing), the blocked (gone for
+    good) and anyone from an older season who never made it onto the wheel.
+    """
     require_admin(authorization)
     from excel.scores import get_all_header_people
     config = load_config()
     hidden = config.get("hidden_people", [])
+    blocked = config.get("blocked_people", [])
+    off_list = set(hidden) | set(blocked)
 
     on_wheel = {normalize_name(k) for k in get_wheel_data()["categories"].keys()}
-    on_wheel -= set(hidden)
+    on_wheel -= off_list
+
+    def describe(name: str) -> dict:
+        return {"name": name, "hidden": name in hidden, "blocked": name in blocked}
 
     seen: dict[str, dict] = {}
     for raw in get_all_header_people():
         display = normalize_name(raw)
         if display in on_wheel or display in seen:
             continue
-        seen[display] = {"name": display, "hidden": display in hidden}
-    for name in hidden:
+        seen[display] = describe(display)
+    for name in off_list:
         if name not in seen and name not in on_wheel:
-            seen[name] = {"name": name, "hidden": True}
+            seen[name] = describe(name)
 
     return sorted(seen.values(), key=lambda p: p["name"].lower())
 
@@ -378,7 +387,8 @@ def start_draw(payload: DrawPayload):
     pool = _theme_pool(entries)
     if not pool:
         raise HTTPException(400, "Brak dostępnych tematów z dodatnią wagą przy obecnych ustawieniach losowania.")
-    people = sorted({normalize_name(p) for p in get_last_night_people()})
+    blocked = set(get_blocked_people())
+    people = sorted({normalize_name(p) for p in get_last_night_people()} - blocked)
     person_weights = {p: recency(p, nights, config.get("draw_initial_penalty", 0.5))[1] for p in people if recency(p, nights, config.get("draw_initial_penalty", 0.5))[1] > 0}
     # Validate both stages before consuming a ticket. Do not silently reweight
     # the first stage just to make a two-person mode possible.

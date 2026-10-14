@@ -99,7 +99,10 @@ def build_config(path: Path):
         # Exercise the stricter selectable mode in the existing regression suite.
         "draw_initial_penalty": 1.0,
         "admin_hash": bcrypt.hashpw(ADMIN_PASSWORD.encode(), bcrypt.gensalt()).decode(),
-        "hidden_people": ["Stary"],
+        # "Stary" is gone for good -- off the wheel, the lists and both draws.
+        # Hiding is exercised separately; it deliberately changes almost nothing.
+        "hidden_people": [],
+        "blocked_people": ["Stary"],
         "name_map": {
             "xero": "Xero",
             "kaja": "Kaja",

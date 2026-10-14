@@ -258,7 +258,9 @@ function SetupStep({ allPeople, personColors, onStart, onPersonAdded, defaultThe
                     disabled={!!restoring}
                     onClick={() => void handleResurface(c.name)}
                   >
-                    {restoring === c.name ? '…' : `+ ${c.name}${c.hidden ? ' (ukryta)' : ''}`}
+                    {restoring === c.name
+                      ? '…'
+                      : `+ ${c.name}${c.blocked ? ' (zablokowana)' : c.hidden ? ' (ukryta)' : ''}`}
                   </button>
                 ))}
               </div>

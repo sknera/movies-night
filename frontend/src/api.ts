@@ -162,7 +162,10 @@ export const recordSpin = (person_key: string, category: string) =>
 
 export interface AdminPerson {
   name: string
+  /** Off the "kto jest dzis" list only -- still on the wheel and in every draw. */
   hidden: boolean
+  /** Not coming back: off the wheel and out of both draws. Scores are kept. */
+  blocked: boolean
 }
 
 export const getPersonData = (name: string) =>
@@ -188,6 +191,12 @@ export const adminHidePerson = (name: string, token: string) =>
 
 export const adminShowPerson = (name: string, token: string) =>
   api.put('/admin/people/show', { name }, { headers: { authorization: token } })
+
+export const adminBlockPerson = (name: string, token: string) =>
+  api.put('/admin/people/block', { name }, { headers: { authorization: token } })
+
+export const adminUnblockPerson = (name: string, token: string) =>
+  api.put('/admin/people/unblock', { name }, { headers: { authorization: token } })
 
 export const adminDeleteCategory = (person_key: string, category: string, token: string) =>
   api.delete('/admin/wheel/category', { data: { person_key, category }, headers: { authorization: token } })

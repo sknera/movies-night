@@ -6,7 +6,7 @@ from excel.locking import locked
 from excel.scores import get_all_movies, get_season4_people, save_session, get_all_nights, get_last_night_people, get_people_for_season, get_all_header_people
 from excel.wheel import get_wheel_data, find_category_owner
 from config import (
-    get_hidden_people, get_person_color, normalize_name, load_config, save_config,
+    get_hidden_people, get_blocked_people, get_person_color, normalize_name, load_config, save_config,
     CURRENT_SEASON, CONFIG_PATH,
 )
 
@@ -35,7 +35,7 @@ def list_people():
     which stores canonical names -- missed people, and the colours from
     /scores/stats (also canonical) never matched.
     """
-    hidden = set(get_hidden_people())
+    hidden = set(get_hidden_people()) | set(get_blocked_people())
     result: list[str] = []
     seen: set[str] = set()
     for raw in get_season4_people():
@@ -50,7 +50,7 @@ def list_people():
 @router.get("/stats")
 def get_stats():
     movies = get_all_movies()
-    hidden = get_hidden_people()
+    hidden = get_blocked_people()
 
     # Normalize names and merge duplicates (xero/Xero → canonical Xero)
     person_data: dict[str, dict] = {}
@@ -138,8 +138,8 @@ def get_nights():
 @router.get("/last-night-people")
 def last_night_people():
     raw = get_last_night_people()
-    hidden = get_hidden_people()
-    return [normalize_name(p) for p in raw if normalize_name(p) not in hidden]
+    blocked = get_blocked_people()
+    return [normalize_name(p) for p in raw if normalize_name(p) not in blocked]
 
 
 @router.get("/person/{name}")
@@ -182,7 +182,7 @@ def get_awards(min_movies: int = 10, last_n: int = 150):
     movies = get_all_movies()
     if last_n > 0:
         movies = movies[-last_n:]
-    hidden = get_hidden_people()
+    hidden = get_blocked_people()
 
     person_scores: dict[str, list[float]] = {}
     person_diffs: dict[str, list[float]] = {}

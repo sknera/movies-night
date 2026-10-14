@@ -181,7 +181,8 @@ def test_second_person_has_one_equal_chance_per_canonical_scorer(client, data_di
 
 def test_insufficient_second_theme_or_person_changes_nothing(client, data_dir):
     config = read_config(data_dir)
-    config['hidden_people'] = ['Stary', 'Kaja', 'Bartosz']
+    # Blocking is what empties the wheel; hiding leaves everyone in the draw.
+    config['blocked_people'] = ['Stary', 'Kaja', 'Bartosz']
     write_config(data_dir, config)
     assert score(client, {'A': {'Xero': 8}}).status_code == 200
     before = client.get('/api/wheel/data').json()
