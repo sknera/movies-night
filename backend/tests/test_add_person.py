@@ -1,11 +1,16 @@
-"""Someone new turns up at movie night."""
+"""Someone new turns up at movie night.
+
+Adding a person writes a column to both workbooks, so the route is behind the
+admin password. The UI asks for it in place (on the scoring screen and on the
+wheel) instead of sending people to the admin panel.
+"""
 from conftest import wheel_entry
 
 
-def test_new_person_reaches_the_scoring_screen(client):
+def test_new_person_reaches_the_scoring_screen(client, admin_headers):
     assert "Zosia" not in client.get("/api/scores/people").json()
 
-    r = client.post("/api/wheel/person", json={"name": "Zosia"})
+    r = client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers)
     assert r.status_code == 200, r.text
     assert r.json()["created_scores"] is True
     assert r.json()["created_wheel"] is True
@@ -13,15 +18,15 @@ def test_new_person_reaches_the_scoring_screen(client):
     assert "Zosia" in client.get("/api/scores/people").json()
 
 
-def test_new_person_reaches_the_wheel_with_no_categories(client):
-    client.post("/api/wheel/person", json={"name": "Zosia"})
+def test_new_person_reaches_the_wheel_with_no_categories(client, admin_headers):
+    client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers)
     entry = wheel_entry(client, "Zosia")
     assert entry["categories"] == []
     assert entry["count"] == 0
 
 
-def test_new_person_can_be_given_categories_immediately(client):
-    client.post("/api/wheel/person", json={"name": "Zosia"})
+def test_new_person_can_be_given_categories_immediately(client, admin_headers):
+    client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers)
     key = wheel_entry(client, "Zosia")["key"]
 
     r = client.post("/api/wheel/categories", json={"categories": {key: ["Kino drogi"]}})
@@ -29,8 +34,8 @@ def test_new_person_can_be_given_categories_immediately(client):
     assert wheel_entry(client, "Zosia")["categories"] == ["Kino drogi"]
 
 
-def test_new_person_gets_a_colour_of_their_own(client):
-    r = client.post("/api/wheel/person", json={"name": "Zosia"})
+def test_new_person_gets_a_colour_of_their_own(client, admin_headers):
+    r = client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers)
     color = r.json()["color"]
     assert color.startswith("#") and len(color) == 7
 
@@ -38,22 +43,22 @@ def test_new_person_gets_a_colour_of_their_own(client):
     assert color not in taken
 
 
-def test_two_new_people_get_different_colours(client):
-    first = client.post("/api/wheel/person", json={"name": "Zosia"}).json()["color"]
-    second = client.post("/api/wheel/person", json={"name": "Franek"}).json()["color"]
+def test_two_new_people_get_different_colours(client, admin_headers):
+    first = client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers).json()["color"]
+    second = client.post("/api/wheel/person", json={"name": "Franek"}, headers=admin_headers).json()["color"]
     assert first != second
 
 
-def test_adding_twice_does_not_create_a_second_column(client):
-    client.post("/api/wheel/person", json={"name": "Zosia"})
-    again = client.post("/api/wheel/person", json={"name": "Zosia"}).json()
+def test_adding_twice_does_not_create_a_second_column(client, admin_headers):
+    client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers)
+    again = client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers).json()
     assert again["created_scores"] is False
     assert again["created_wheel"] is False
     assert client.get("/api/scores/people").json().count("Zosia") == 1
 
 
-def test_new_person_scores_land_in_the_sheet(client):
-    client.post("/api/wheel/person", json={"name": "Zosia"})
+def test_new_person_scores_land_in_the_sheet(client, admin_headers):
+    client.post("/api/wheel/person", json={"name": "Zosia"}, headers=admin_headers)
     people = client.get("/api/scores/people").json()
     assert "Zosia" in people
 
@@ -69,11 +74,26 @@ def test_new_person_scores_land_in_the_sheet(client):
     assert night["movies"][0]["scores"]["Zosia"] == 8.0
 
 
-def test_public_add_cannot_restore_hidden_person(client, data_dir):
+def test_adding_a_person_requires_the_admin_password(client, data_dir):
+    """Without this the UI prompt would be decoration: Traefik only gates
+    non-GET requests when Authelia is in front, and that gate is not reliable."""
+    before = {p.name: p.read_bytes() for p in data_dir.iterdir() if p.suffix in ('.json', '.xlsx')}
+
+    assert client.post("/api/wheel/person", json={"name": "Zosia"}).status_code == 401
+    assert client.post("/api/wheel/person", json={"name": "Zosia"},
+                       headers={"authorization": "invalid"}).status_code == 401
+
+    assert "Zosia" not in client.get("/api/scores/people").json()
+    assert before == {p.name: p.read_bytes() for p in data_dir.iterdir() if p.suffix in ('.json', '.xlsx')}
+
+
+def test_add_cannot_restore_hidden_person_even_as_admin(client, data_dir, admin_headers):
+    """Unhiding goes through /resurface, so a plain add must not do it silently."""
     assert "Stary" not in client.get("/api/scores/people").json()
     before = {p.name: p.read_bytes() for p in data_dir.iterdir() if p.suffix in ('.json', '.xlsx')}
     for name in ('Stary', 'stary', ' STARY '):
-        assert client.post("/api/wheel/person", json={"name": name}).status_code == 403
+        assert client.post("/api/wheel/person", json={"name": name},
+                           headers=admin_headers).status_code == 403
     assert "Stary" not in client.get("/api/scores/people").json()
     assert before == {p.name: p.read_bytes() for p in data_dir.iterdir() if p.suffix in ('.json', '.xlsx')}
 
@@ -86,8 +106,8 @@ def test_admin_add_also_unhides(client, admin_token):
     assert "Stary" in client.get("/api/scores/people").json()
 
 
-def test_blank_name_is_rejected(client):
-    assert client.post("/api/wheel/person", json={"name": "   "}).status_code == 400
+def test_blank_name_is_rejected(client, admin_headers):
+    assert client.post("/api/wheel/person", json={"name": "   "}, headers=admin_headers).status_code == 400
 
 
 def test_resurface_lists_people_who_left_the_wheel(client, admin_token):

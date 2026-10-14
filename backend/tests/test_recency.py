@@ -44,8 +44,8 @@ def test_two_hosts_are_blocked_for_one_night_then_recover_together(client):
     assert wheel_entry(client, 'Kaja')['recency_multiplier'] == .5
 
 
-def test_cohost_uses_penalties_and_excludes_previous_hosts(client, data_dir, monkeypatch):
-    client.post('/api/wheel/person', json={'name': 'Zosia'})
+def test_cohost_uses_penalties_and_excludes_previous_hosts(client, data_dir, monkeypatch, admin_headers):
+    client.post('/api/wheel/person', json={'name': 'Zosia'}, headers=admin_headers)
     night(['Kaja'], 0)
     night(['Zosia'], 1, ['Xero', 'Kaja', 'Bartosz', 'Zosia'])
     config = read_config(data_dir)

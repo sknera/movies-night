@@ -254,18 +254,18 @@ export default function HistoryPage() {
                                 {peopleCount} {peopleCount === 1 ? 'osoba' : peopleCount < 5 ? 'osoby' : 'osób'}
                               </div>
                             )}
-                            <span className="admin-action" onClick={e => e.stopPropagation()}>
-                              <button
-                                className="night-edit-btn"
-                                disabled={!adminToken}
-                                title={adminToken ? "Edytuj oceny" : "Tylko dla administratora"}
-                                aria-label="Edytuj oceny"
-                                onClick={e => { e.stopPropagation(); setEditingNight(night) }}
-                              >
-                                ✏
-                              </button>
-                              {!adminToken && <span className="admin-only-note">Tylko dla administratora</span>}
-                            </span>
+                            {adminToken && (
+                              <span className="admin-action" onClick={e => e.stopPropagation()}>
+                                <button
+                                  className="night-edit-btn"
+                                  title="Edytuj oceny"
+                                  aria-label="Edytuj oceny"
+                                  onClick={e => { e.stopPropagation(); setEditingNight(night) }}
+                                >
+                                  ✏
+                                </button>
+                              </span>
+                            )}
                             <span className="night-expand-icon">{isExpanded ? '▲' : '▼'}</span>
                           </div>
                           {night.host && (

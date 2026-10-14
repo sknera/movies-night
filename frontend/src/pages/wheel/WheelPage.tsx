@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getWheelData, addCategories, addPerson } from '../../api'
+import { useAdminSession } from '../../hooks/useAdminSession'
+import { AdminPasswordPrompt } from '../../components/AdminPasswordPrompt'
 import type { WheelData, WheelEntry, HistoryEntry } from '../../api'
 import DrawWheel from './DrawWheel'
 import './WheelPage.css'
@@ -157,6 +159,8 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
   const [newPersonName, setNewPersonName] = useState('')
   const [addingPerson, setAddingPerson] = useState(false)
   const [addPersonMsg, setAddPersonMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [askPassword, setAskPassword] = useState(false)
+  const adminToken = useAdminSession()
   const [justAdded, setJustAdded] = useState<string | null>(null)
 
   // Once the reload brings the new person's card in, scroll to it and put the
@@ -211,13 +215,13 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
     }
   }
 
-  const handleAddPerson = async () => {
+  const handleAddPerson = async (token: string) => {
     const name = newPersonName.trim()
     if (!name || addingPerson) return
     setAddingPerson(true)
     setAddPersonMsg(null)
     try {
-      await addPerson(name)
+      await addPerson(name, token)
       setNewPersonName('')
       setAddPersonMsg({ ok: true, text: `✅ Dodano: ${name} — wpisz jego kategorie poniżej` })
       // Stay on the grid: the whole point of adding someone here is that they
@@ -229,6 +233,15 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
     } finally {
       setAddingPerson(false)
     }
+  }
+
+  // Writing a new person to the workbooks is an admin action; ask in place
+  // rather than sending people to the admin panel and back.
+  const requestAddPerson = () => {
+    if (!newPersonName.trim()) return
+    setAddPersonMsg(null)
+    if (adminToken) void handleAddPerson(adminToken)
+    else setAskPassword(true)
   }
 
   return (
@@ -304,16 +317,23 @@ function AddCategoriesView({ entries, onGoToWheel, onReload }: {
               placeholder="Imię nowej osoby…"
               value={newPersonName}
               onChange={e => setNewPersonName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAddPerson() }}
+              onKeyDown={e => { if (e.key === 'Enter') requestAddPerson() }}
             />
             <button
               className="btn btn-primary btn-sm"
               disabled={addingPerson || !newPersonName.trim()}
-              onClick={handleAddPerson}
+              onClick={requestAddPerson}
             >
               {addingPerson ? '…' : 'Dodaj'}
             </button>
           </div>
+          {askPassword && (
+            <AdminPasswordPrompt
+              label={`Dodanie osoby „${newPersonName.trim()}”`}
+              onCancel={() => setAskPassword(false)}
+              onSuccess={token => { setAskPassword(false); void handleAddPerson(token) }}
+            />
+          )}
           {addPersonMsg && (
             <div className={addPersonMsg.ok ? 'add-person-ok' : 'error-msg'} style={{ fontSize: '0.82rem', marginTop: 6 }}>
               {addPersonMsg.text}

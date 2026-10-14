@@ -181,7 +181,14 @@ def _ensure_person(name: str, *, allow_restore: bool = False) -> dict:
 
 
 @router.post("/person")
-def add_person_public(payload: AddPersonPayload):
+def add_person_public(payload: AddPersonPayload, authorization: str | None = Header(default=None)):
+    """Adding someone to the wheel and the scoring sheet is an admin action.
+
+    The UI asks for the admin password inline, but the check has to live here:
+    Traefik only gates non-GET requests when Authelia is in front, so a public
+    endpoint would still let anyone write to the workbooks.
+    """
+    require_admin(authorization)
     name = payload.name.strip()
     if not name:
         raise HTTPException(400, "Name required")

@@ -24,6 +24,13 @@ function stubApi(over: { people?: string[]; nextCategory?: string | null } = {})
 
 const renderFlow = () => render(<MemoryRouter><ScoringFlow /></MemoryRouter>)
 
+/** Answers the inline admin prompt that guards writing to the workbooks. */
+async function unlockAdmin(user: ReturnType<typeof userEvent.setup>, password = 'tajne') {
+  vi.spyOn(api, 'adminGetPeople').mockResolvedValue([])
+  await user.type(screen.getByLabelText('Hasło administratora'), password)
+  await user.click(screen.getByRole('button', { name: 'Potwierdź' }))
+}
+
 /** Fills in the setup step and presses Start. */
 async function startSession(user: ReturnType<typeof userEvent.setup>, movies = ['Film A', 'Film B']) {
   const inputs = screen.getAllByPlaceholderText(/^Film \d…$/)
@@ -100,7 +107,10 @@ describe('ScoringFlow setup', () => {
 })
 
 describe('ScoringFlow add person', () => {
-  beforeEach(() => stubApi())
+  beforeEach(() => {
+    sessionStorage.clear()
+    stubApi()
+  })
 
   it('adds a newcomer and marks them present without leaving the screen', async () => {
     const user = userEvent.setup()
@@ -117,10 +127,13 @@ describe('ScoringFlow add person', () => {
     renderFlow()
     await screen.findByRole('button', { name: 'Xero' })
 
+    vi.spyOn(api, 'adminLogin').mockResolvedValue({ token: 'tok' })
+
     await user.type(screen.getByPlaceholderText('Nowa osoba…'), 'Zosia')
     await user.click(screen.getByRole('button', { name: '+ Dodaj osobę' }))
+    await unlockAdmin(user)
 
-    expect(addPerson).toHaveBeenCalledWith('Zosia')
+    await waitFor(() => expect(addPerson).toHaveBeenCalledWith('Zosia', 'tok'))
     const chip = await screen.findByRole('button', { name: 'Zosia' })
     expect(chip).toHaveAttribute('aria-pressed', 'true')
     // Still on the setup step.
@@ -135,10 +148,13 @@ describe('ScoringFlow add person', () => {
     })
     const submit = vi.spyOn(api, 'submitSession').mockResolvedValue({ data: { ok: true } } as never)
 
+    vi.spyOn(api, 'adminLogin').mockResolvedValue({ token: 'tok' })
+
     renderFlow()
     await screen.findByRole('button', { name: 'Xero' })
     await user.type(screen.getByPlaceholderText('Nowa osoba…'), 'Zosia')
     await user.click(screen.getByRole('button', { name: '+ Dodaj osobę' }))
+    await unlockAdmin(user)
     await screen.findByRole('button', { name: 'Zosia' })
 
     await startSession(user, ['Film A'])
@@ -156,13 +172,53 @@ describe('ScoringFlow add person', () => {
       response: { data: { detail: 'Name required' } },
     })
 
+    vi.spyOn(api, 'adminLogin').mockResolvedValue({ token: 'tok' })
+
     renderFlow()
     await screen.findByRole('button', { name: 'Xero' })
     await user.type(screen.getByPlaceholderText('Nowa osoba…'), 'Zosia')
     await user.click(screen.getByRole('button', { name: '+ Dodaj osobę' }))
+    await unlockAdmin(user)
 
     expect(await screen.findByText('Name required')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Zosia' })).not.toBeInTheDocument()
+  })
+
+  it('refuses to add anyone when the admin password is wrong', async () => {
+    const user = userEvent.setup()
+    const addPerson = vi.spyOn(api, 'addPerson')
+    vi.spyOn(api, 'adminLogin').mockRejectedValue({ response: { status: 403 } })
+
+    renderFlow()
+    await screen.findByRole('button', { name: 'Xero' })
+    await user.type(screen.getByPlaceholderText('Nowa osoba…'), 'Zosia')
+    await user.click(screen.getByRole('button', { name: '+ Dodaj osobę' }))
+    await unlockAdmin(user, 'zle-haslo')
+
+    expect(await screen.findByText('Błędne hasło')).toBeInTheDocument()
+    expect(addPerson).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Zosia' })).not.toBeInTheDocument()
+  })
+
+  it('brings a hidden person back onto tonight\'s list', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'adminLogin').mockResolvedValue({ token: 'tok' })
+    vi.spyOn(api, 'getHiddenCandidates').mockResolvedValue([{ name: 'Christofer', hidden: true }])
+    const resurface = vi.spyOn(api, 'resurfacePerson').mockImplementation(async () => {
+      vi.mocked(api.getPeople).mockResolvedValue([...PEOPLE, 'Christofer'])
+      return { ok: true, created_scores: false, created_wheel: false, color: '#4bd8c1' }
+    })
+
+    renderFlow()
+    await screen.findByRole('button', { name: 'Xero' })
+    await user.click(screen.getByRole('button', { name: '👁 Odkryj ukrytą osobę' }))
+    await unlockAdmin(user)
+
+    await user.click(await screen.findByRole('button', { name: '+ Christofer (ukryta)' }))
+
+    await waitFor(() => expect(resurface).toHaveBeenCalledWith('Christofer', 'tok'))
+    const chip = await screen.findByRole('button', { name: 'Christofer' })
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
   })
 })
 

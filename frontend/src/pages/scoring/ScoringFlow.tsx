@@ -3,7 +3,10 @@ import { getErrorMessage } from '../../utils/errors'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getPeople, getStats, submitSession, getNextCategory, addPerson } from '../../api'
+import { getPeople, getStats, submitSession, getNextCategory, addPerson, getHiddenCandidates, resurfacePerson } from '../../api'
+import type { AdminPerson } from '../../api'
+import { useAdminSession } from '../../hooks/useAdminSession'
+import { AdminPasswordPrompt } from '../../components/AdminPasswordPrompt'
 import { splitCategoryName } from '../../utils/emoji'
 import { readDraft, writeDraft, shuffle } from './draft'
 import type { Session } from './draft'
@@ -29,6 +32,13 @@ function SetupStep({ allPeople, personColors, onStart, onPersonAdded, defaultThe
   const [newName, setNewName] = useState('')
   const [addingPerson, setAddingPerson] = useState(false)
   const [addError, setAddError] = useState('')
+  const adminToken = useAdminSession()
+  // Which action is waiting for the admin password, if any.
+  const [gate, setGate] = useState<'add' | 'reveal' | null>(null)
+  const [candidates, setCandidates] = useState<AdminPerson[] | null>(null)
+  const [loadingCandidates, setLoadingCandidates] = useState(false)
+  const [restoring, setRestoring] = useState('')
+  const [revealError, setRevealError] = useState('')
 
   const parsedMovies = useMemo(
     () => groups.flatMap(g => g.movies.map(m => m.trim()).filter(Boolean)),
@@ -60,26 +70,71 @@ function SetupStep({ allPeople, personColors, onStart, onPersonAdded, defaultThe
       return next
     })
 
-  const handleAddPerson = async () => {
+  // Someone who was just added or brought back is obviously here tonight.
+  const markPresent = (name: string) =>
+    setAbsent(prev => {
+      const next = new Set(prev)
+      next.delete(name)
+      return next
+    })
+
+  const handleAddPerson = async (token: string) => {
     const name = newName.trim()
     if (!name || addingPerson) return
     setAddingPerson(true)
     setAddError('')
     try {
-      await addPerson(name)
+      await addPerson(name, token)
       onPersonAdded(name)
-      // New arrivals are here tonight — that is why they were just added.
-      setAbsent(prev => {
-        const next = new Set(prev)
-        next.delete(name)
-        return next
-      })
+      markPresent(name)
       setNewName('')
     } catch (e) {
       setAddError(getErrorMessage(e, 'Błąd dodawania'))
     } finally {
       setAddingPerson(false)
     }
+  }
+
+  const loadCandidates = async (token: string) => {
+    setRevealError('')
+    setLoadingCandidates(true)
+    try {
+      setCandidates(await getHiddenCandidates(token))
+    } catch (e) {
+      setRevealError(getErrorMessage(e, 'Nie udało się pobrać listy ukrytych osób'))
+    } finally {
+      setLoadingCandidates(false)
+    }
+  }
+
+  const handleResurface = async (name: string) => {
+    if (!adminToken || restoring) return
+    setRestoring(name)
+    setRevealError('')
+    try {
+      await resurfacePerson(name, adminToken)
+      onPersonAdded(name)
+      markPresent(name)
+      setCandidates(prev => prev?.filter(c => c.name !== name) ?? null)
+    } catch (e) {
+      setRevealError(getErrorMessage(e, 'Nie udało się przywrócić osoby'))
+    } finally {
+      setRestoring('')
+    }
+  }
+
+  // Adding and unhiding both write to the workbooks, so both need the password.
+  const requestAdd = () => {
+    if (!newName.trim()) return
+    setAddError('')
+    if (adminToken) void handleAddPerson(adminToken)
+    else setGate('add')
+  }
+
+  const requestReveal = () => {
+    setRevealError('')
+    if (adminToken) void loadCandidates(adminToken)
+    else setGate('reveal')
   }
 
   return (
@@ -151,17 +206,65 @@ function SetupStep({ allPeople, personColors, onStart, onPersonAdded, defaultThe
             placeholder="Nowa osoba…"
             value={newName}
             onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAddPerson() }}
+            onKeyDown={e => { if (e.key === 'Enter') requestAdd() }}
           />
           <button
             className="btn btn-primary btn-sm"
             disabled={addingPerson || !newName.trim()}
-            onClick={handleAddPerson}
+            onClick={requestAdd}
           >
             {addingPerson ? '…' : '+ Dodaj osobę'}
           </button>
+          <button
+            className="btn btn-sm"
+            disabled={loadingCandidates}
+            onClick={requestReveal}
+          >
+            {loadingCandidates ? '…' : '👁 Odkryj ukrytą osobę'}
+          </button>
         </div>
         {addError && <div className="error-msg">{addError}</div>}
+
+        {gate && (
+          <AdminPasswordPrompt
+            label={gate === 'add' ? `Dodanie osoby „${newName.trim()}”` : 'Odkrycie ukrytej osoby'}
+            onCancel={() => setGate(null)}
+            onSuccess={token => {
+              const action = gate
+              setGate(null)
+              if (action === 'add') void handleAddPerson(token)
+              else void loadCandidates(token)
+            }}
+          />
+        )}
+
+        {revealError && <div className="error-msg">{revealError}</div>}
+
+        {candidates && (
+          <div className="hidden-people">
+            <div className="hidden-people-head">
+              <span>Przywróć osobę</span>
+              <button className="btn btn-sm" onClick={() => setCandidates(null)}>Zamknij</button>
+            </div>
+            {candidates.length === 0 ? (
+              <div className="hidden-people-empty">Nie ma nikogo do przywrócenia.</div>
+            ) : (
+              <div className="hidden-people-grid">
+                {candidates.map(c => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    className="btn btn-sm"
+                    disabled={!!restoring}
+                    onClick={() => void handleResurface(c.name)}
+                  >
+                    {restoring === c.name ? '…' : `+ ${c.name}${c.hidden ? ' (ukryta)' : ''}`}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <button

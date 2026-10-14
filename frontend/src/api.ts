@@ -145,8 +145,15 @@ export interface AddPersonResult {
   created_wheel: boolean
   color: string
 }
-export const addPerson = (name: string) =>
-  api.post<AddPersonResult>('/wheel/person', { name }).then(r => r.data)
+export const addPerson = (name: string, token: string) =>
+  api.post<AddPersonResult>('/wheel/person', { name }, { headers: { authorization: token } }).then(r => r.data)
+
+/** People known from earlier seasons (or explicitly hidden) who are off the wheel. */
+export const getHiddenCandidates = (token: string) =>
+  api.get<AdminPerson[]>('/wheel/candidates', { headers: { authorization: token } }).then(r => r.data)
+
+export const resurfacePerson = (name: string, token: string) =>
+  api.post<AddPersonResult>('/wheel/resurface', { name }, { headers: { authorization: token } }).then(r => r.data)
 
 export const recordSpin = (person_key: string, category: string) =>
   api.post('/wheel/spin', { person_key, category })

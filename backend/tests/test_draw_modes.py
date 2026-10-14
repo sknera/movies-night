@@ -73,8 +73,8 @@ def test_two_distinct_themes_and_owners_and_idempotent_second_spin(client, data_
     assert len(client.get('/api/wheel/data').json()['history']) == count + 2
 
 
-def test_cohost_only_actual_scorers_including_guests_without_tickets(client, data_dir):
-    client.post('/api/wheel/person', json={'name': 'Zosia'})
+def test_cohost_only_actual_scorers_including_guests_without_tickets(client, data_dir, admin_headers):
+    client.post('/api/wheel/person', json={'name': 'Zosia'}, headers=admin_headers)
     assert score(client, {'A': {'Xero': 8, 'Kaja': None, 'Zosia': None},
                           'B': {'Zosia': 7, 'Bartosz': 9}},
                  people=['Xero', 'Kaja', 'Zosia']).status_code == 200

@@ -1,0 +1,87 @@
+name: deploy
+
+# Every push to main that passes the test suite goes live on
+# https://nocki.xerobox.pl. Deploys run one at a time so two quick pushes
+# cannot rsync over each other mid-build.
+on:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # workflow_run fires for failures too; a red test run must not ship.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # workflow_run checks out the default branch by default, not the
+          # commit that was tested.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Load the deploy key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Back up the current release
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" '
+              set -e
+              TS=$(date +%Y%m%d-%H%M%S)
+              tar czf /opt/xerobox/movies-night-code-$TS.tar.gz \
+                --exclude=./data --exclude=./data.bak-\* --exclude=./node_modules \
+                -C /opt/xerobox/movies-night .
+              # Keep the last 10 releases; the disk is 38G and these are ~300K.
+              ls -1t /opt/xerobox/movies-night-code-*.tar.gz | tail -n +11 | xargs -r rm --
+              echo "Backup: /opt/xerobox/movies-night-code-$TS.tar.gz"
+            '
+
+      - name: Sync the code
+        # data/ holds the live workbooks and .env.deploy holds credentials --
+        # both live only on the server and must survive every deploy. rsync
+        # does not delete excluded paths, so --delete is safe here.
+        run: |
+          rsync -az --delete \
+            --exclude='data/' \
+            --exclude='data.bak-*' \
+            --exclude='.env.deploy' \
+            --exclude='.claude/' \
+            --exclude='.git/' \
+            --exclude='node_modules/' \
+            --exclude='.DS_Store' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes" \
+            ./ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/xerobox/movies-night/"
+
+      - name: Rebuild and restart
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            'cd /opt/xerobox && docker compose up -d --build movies-night'
+
+      - name: Verify the site answers
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://nocki.xerobox.pl/ || true)
+            if [ "$code" = "200" ]; then
+              echo "nocki.xerobox.pl → 200"
+              curl -sf https://nocki.xerobox.pl/api/wheel/data > /dev/null && echo "API odpowiada"
+              exit 0
+            fi
+            echo "Próba $i: HTTP $code — czekam…"
+            sleep 6
+          done
+          echo "Strona nie wróciła z 200 po deployu" >&2
+          exit 1
