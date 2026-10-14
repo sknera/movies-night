@@ -329,3 +329,11 @@
 .draw-penalty-options label { display: flex; align-items: baseline; gap: .75rem; }
 .draw-penalty-options input { width: auto; }
 .draw-penalty-options small { display: block; color: var(--ink-muted); margin-top: .25rem; }
+
+.admin-section-note {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--ink-muted);
+  margin: -2px 0 8px;
+  max-width: 62ch;
+}

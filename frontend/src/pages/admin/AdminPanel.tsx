@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
 import {
   adminLogin, adminLogout, adminGetPeople,
-  adminAddPerson, adminHidePerson, adminShowPerson,
+  adminAddPerson, adminHidePerson, adminShowPerson, adminBlockPerson, adminUnblockPerson,
   adminDeleteCategory, adminDeleteHistoryEntry,
   adminEditHistoryEntry, adminReorderHistory, adminAddHistoryEntry,
   addCategories, getWheelData, getNextNightDate, adminSetNextNightDate,
@@ -395,6 +395,20 @@ export default function AdminPanel() {
     await loadPeople(token)
   }
 
+  const handleBlock = async (name: string) => {
+    if (!token) return
+    await adminBlockPerson(name, token)
+    flash(`🚫 Zablokowano: ${name}`)
+    await loadPeople(token)
+  }
+
+  const handleUnblock = async (name: string) => {
+    if (!token) return
+    await adminUnblockPerson(name, token)
+    flash(`✅ Odblokowano: ${name}`)
+    await loadPeople(token)
+  }
+
   const handleAddCategory = async (personKey: string) => {
     const val = (addCatInputs[personKey] ?? '').trim()
     if (!val) return
@@ -422,8 +436,9 @@ export default function AdminPanel() {
     }
   }
 
-  const active = people.filter(p => !p.hidden)
-  const hidden = people.filter(p => p.hidden)
+  const active = people.filter(p => !p.hidden && !p.blocked)
+  const hidden = people.filter(p => p.hidden && !p.blocked)
+  const blocked = people.filter(p => p.blocked)
 
   return (
     <div className="admin-page">
@@ -583,9 +598,17 @@ export default function AdminPanel() {
                       <span className="person-name">{p.name}</span>
                       <button
                         className="btn btn-ghost btn-sm"
+                        title="Znika z listy „kto jest dziś”, ale dalej jest na kole i w losowaniach"
                         onClick={() => handleHide(p.name)}
                       >
                         Ukryj
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        title="Już nie przyjdzie: znika z koła i z obu losowań. Oceny zostają."
+                        onClick={() => handleBlock(p.name)}
+                      >
+                        Zablokuj
                       </button>
                     </div>
                   ))}
@@ -596,6 +619,10 @@ export default function AdminPanel() {
             {hidden.length > 0 && (
               <div className="admin-section">
                 <div className="admin-section-title">🙈 Ukryci ({hidden.length})</div>
+                <div className="admin-section-note">
+                  Bywają rzadko. Nie ma ich na liście „kto jest dziś”, ale są na kole,
+                  w statystykach i w obu losowaniach.
+                </div>
                 <div className="people-list people-list-hidden">
                   {hidden.map(p => (
                     <div key={p.name} className="person-row">
@@ -605,6 +632,35 @@ export default function AdminPanel() {
                         onClick={() => handleShow(p.name)}
                       >
                         Przywróć
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => handleBlock(p.name)}
+                      >
+                        Zablokuj
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {blocked.length > 0 && (
+              <div className="admin-section">
+                <div className="admin-section-title">🚫 Zablokowani ({blocked.length})</div>
+                <div className="admin-section-note">
+                  Już nie przychodzą. Poza kołem i poza losowaniami — ich oceny i historia
+                  zostają nietknięte.
+                </div>
+                <div className="people-list people-list-hidden">
+                  {blocked.map(p => (
+                    <div key={p.name} className="person-row">
+                      <span className="person-name person-name-hidden">{p.name}</span>
+                      <button
+                        className="btn btn-success btn-sm"
+                        onClick={() => handleUnblock(p.name)}
+                      >
+                        Odblokuj
                       </button>
                     </div>
                   ))}

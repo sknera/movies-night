@@ -200,10 +200,29 @@ describe('ScoringFlow add person', () => {
     expect(screen.queryByRole('button', { name: 'Zosia' })).not.toBeInTheDocument()
   })
 
+  it('tells a blocked person apart from a hidden one on the restore list', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'adminLogin').mockResolvedValue({ token: 'tok' })
+    vi.spyOn(api, 'getHiddenCandidates').mockResolvedValue([
+      { name: 'Christofer', hidden: true, blocked: false },
+      { name: 'Grzesław', hidden: false, blocked: true },
+    ])
+
+    renderFlow()
+    await screen.findByRole('button', { name: 'Xero' })
+    await user.click(screen.getByRole('button', { name: '👁 Odkryj ukrytą osobę' }))
+    await unlockAdmin(user)
+
+    expect(await screen.findByRole('button', { name: '+ Christofer (ukryta)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ Grzesław (zablokowana)' })).toBeInTheDocument()
+  })
+
   it('brings a hidden person back onto tonight\'s list', async () => {
     const user = userEvent.setup()
     vi.spyOn(api, 'adminLogin').mockResolvedValue({ token: 'tok' })
-    vi.spyOn(api, 'getHiddenCandidates').mockResolvedValue([{ name: 'Christofer', hidden: true }])
+    vi.spyOn(api, 'getHiddenCandidates').mockResolvedValue([
+      { name: 'Christofer', hidden: true, blocked: false },
+    ])
     const resurface = vi.spyOn(api, 'resurfacePerson').mockImplementation(async () => {
       vi.mocked(api.getPeople).mockResolvedValue([...PEOPLE, 'Christofer'])
       return { ok: true, created_scores: false, created_wheel: false, color: '#4bd8c1' }

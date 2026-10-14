@@ -35,7 +35,23 @@ def save_config(config: dict):
 
 
 def get_hidden_people() -> list:
+    """People kept off the "kto jest dzis" list to stop it filling up.
+
+    Hiding is housekeeping, nothing more: these people still come, just
+    rarely, so they stay on the wheel, in the stats and in every draw. One
+    click on the scoring screen brings them back onto the list.
+    """
     return load_config().get("hidden_people", [])
+
+
+def get_blocked_people() -> list:
+    """People who are not coming back.
+
+    Their rows and scores stay in the workbooks -- the history must not change
+    -- but they are gone from the lists, the wheel and both draws. Unblocking
+    is there for the day somebody turns up anyway.
+    """
+    return load_config().get("blocked_people", [])
 
 
 def get_name_map() -> dict:

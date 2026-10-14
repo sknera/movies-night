@@ -50,14 +50,18 @@ def list_all_people(authorization: str = Header(default=None)):
     _require_admin(authorization)
     config = load_config()
     hidden = config.get("hidden_people", [])
+    blocked = config.get("blocked_people", [])
 
     scores_people = get_season4_people()
     wheel_data = get_wheel_data()
     wheel_people = [normalize_name(k) for k in wheel_data["categories"].keys()]
 
     all_names = list(dict.fromkeys(normalize_name(p) for p in scores_people + wheel_people))
+    # Blocked people are off every list, so they have to be named explicitly
+    # or the admin panel would have no way to unblock them.
+    all_names += [p for p in blocked if p not in all_names]
     return [
-        {"name": p, "hidden": p in hidden}
+        {"name": p, "hidden": p in hidden, "blocked": p in blocked}
         for p in all_names
     ]
 
@@ -97,6 +101,7 @@ def hide_person(payload: PersonNamePayload, authorization: str = Header(default=
     if payload.name not in hidden:
         hidden.append(payload.name)
     config["hidden_people"] = hidden
+    config["blocked_people"] = [p for p in config.get("blocked_people", []) if p != payload.name]
     save_config(config)
     return {"ok": True}
 
@@ -108,6 +113,36 @@ def show_person(payload: PersonNamePayload, authorization: str = Header(default=
     config = load_config()
     hidden = config.get("hidden_people", [])
     config["hidden_people"] = [p for p in hidden if p != payload.name]
+    config["blocked_people"] = [p for p in config.get("blocked_people", []) if p != payload.name]
+    save_config(config)
+    return {"ok": True}
+
+
+@router.put("/people/block")
+@locked(lambda: CONFIG_PATH)
+def block_person(payload: PersonNamePayload, authorization: str = Header(default=None)):
+    """Somebody who is not coming back: off the wheel and out of both draws.
+
+    Their scores stay in the workbooks -- blocking never edits history.
+    """
+    _require_admin(authorization)
+    config = load_config()
+    blocked = config.get("blocked_people", [])
+    if payload.name not in blocked:
+        blocked.append(payload.name)
+    config["blocked_people"] = blocked
+    # Blocking is the stronger statement, so it supersedes a plain hide.
+    config["hidden_people"] = [p for p in config.get("hidden_people", []) if p != payload.name]
+    save_config(config)
+    return {"ok": True}
+
+
+@router.put("/people/unblock")
+@locked(lambda: CONFIG_PATH)
+def unblock_person(payload: PersonNamePayload, authorization: str = Header(default=None)):
+    _require_admin(authorization)
+    config = load_config()
+    config["blocked_people"] = [p for p in config.get("blocked_people", []) if p != payload.name]
     save_config(config)
     return {"ok": True}
 
@@ -138,6 +173,7 @@ def rename_person(payload: RenamePayload, authorization: str = Header(default=No
     if old_name in colors:
         colors[new_name] = colors.pop(old_name)
     config["hidden_people"] = [new_name if p == old_name else p for p in config.get("hidden_people", [])]
+    config["blocked_people"] = [new_name if p == old_name else p for p in config.get("blocked_people", [])]
     save_config(config)
     return {"ok": True}
 

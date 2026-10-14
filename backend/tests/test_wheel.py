@@ -126,6 +126,6 @@ def test_simulation_never_repeats_a_category(client):
     assert len(seen) == len(set(seen))
 
 
-def test_hidden_people_are_off_the_wheel(client):
+def test_blocked_people_are_off_the_wheel(client):
     names = [e["name"] for e in client.get("/api/wheel/data").json()["entries"]]
     assert "Stary" not in names
